@@ -3,3 +3,6 @@ dist/
 .env
 *.log
 docs/.assembly/
+demo/.shots/
+docs/assets/*.tmp.png
+__pycache__/

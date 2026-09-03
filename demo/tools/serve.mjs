@@ -174,8 +174,13 @@ createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
            .end(JSON.stringify(out));
       } catch (err) {
-        res.writeHead(502, { 'Content-Type': 'application/json' })
-           .end(JSON.stringify({ error: String(err && err.message ? err.message : err) }));
+        const msg = String(err && err.message ? err.message : err);
+        // An endpoint with no authorisation server is a fine thing to be. Say
+        // so with a 200 rather than a 502, so the page does not log a network
+        // error for a situation that is expected and handled.
+        const unsupported = /register 404|ECONNREFUSED|fetch failed/.test(msg);
+        res.writeHead(unsupported ? 200 : 502, { 'Content-Type': 'application/json' })
+           .end(JSON.stringify(unsupported ? { unsupported: true, error: msg } : { error: msg }));
       }
       return;
     }

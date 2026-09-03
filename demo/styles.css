@@ -219,8 +219,8 @@ button { cursor: pointer; }
 
 .transcript-wrap { position: relative; min-height: 0; flex: 1; }
 .fade-top {
-  position: absolute; inset: 0 0 auto 0; height: 2.4rem; pointer-events: none;
-  background: linear-gradient(var(--room), rgba(21, 26, 32, 0));
+  position: absolute; inset: 0 0 auto 0; height: 3.4rem; pointer-events: none;
+  background: linear-gradient(var(--room) 22%, rgba(21, 26, 32, 0));
 }
 
 .transcript {

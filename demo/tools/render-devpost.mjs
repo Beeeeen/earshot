@@ -33,7 +33,7 @@ const STILLS = [
   { beat: 1, n: 1,
     cap: 'One Echo, three people, one of them not family. The answer is spoken; the drug name is not.' },
   { beat: 2, n: 2,
-    cap: 'Told to read the medication name out loud, it refuses the channel — not the question.' },
+    cap: 'A prompt injection in the tool call orders it to speak the drug name. The spoken line comes back byte-identical.' },
   { beat: 5, n: 3, device: true,
     cap: 'The same answer in full, on the asker’s own device, over the MCP Apps card.' },
   { beat: 9, n: 4, raw: true,
@@ -99,18 +99,34 @@ try {
     const { page } = await openDemo(browser, server.url,
       'speed=8&still=2', { width: 1920, height: 1080, deviceScaleFactor: DSF });
 
+    /* The NEWEST card, scrolled into view first. Taking `.card` grabs the
+       oldest one, which by this beat has scrolled out of the phone and clips
+       to an empty rectangle -- a silently blank panel on the finished card. */
     const clipOf = async (sel) => {
-      const box = await page.$eval(sel, (e) => {
+      const box = await page.evaluate((s) => {
+        const all = document.querySelectorAll(s);
+        const e = all[all.length - 1];
+        e.scrollIntoView({ block: 'nearest' });
         const r = e.getBoundingClientRect();
         return { x: r.x, y: r.y, width: r.width, height: r.height };
-      });
+      }, sel);
+      if (box.y < 0 || box.height < 40 || box.width < 40) {
+        throw new Error(`${sel} is not fully on screen (${JSON.stringify(box)}) — ` +
+                        'it would have been captured blank');
+      }
       return png(await page.screenshot({ clip: box }));
     };
     // Only the card is taken as a picture. The spoken line is set as type: a
     // crop of it lands about 9px tall on a gallery card, which is decoration
     // pretending to be evidence.
     const cardImg = await clipOf('.card');
-    const said = await page.$eval('.utt-alexa[data-refused] .said', (e) => e.textContent);
+    // Live mode has no synthetic refusal flag -- the server's answer is the
+    // answer -- so fall back to the newest spoken line.
+    const said = await page.evaluate(() => {
+      const all = document.querySelectorAll('.utt-alexa .said');
+      const refused = document.querySelector('.utt-alexa[data-refused] .said');
+      return (refused || all[all.length - 1]).textContent;
+    });
     await page.close();
 
     const stats = [
@@ -147,8 +163,14 @@ try {
            font:700 13px/1 ${SANS};letter-spacing:.15em;text-transform:uppercase;color:${C.cyan}}
       .hop .rule{flex:1;height:1px;background:linear-gradient(90deg,
                  rgba(79,224,210,.55),rgba(79,224,210,.12))}
-      .card{margin-top:14px;width:100%;border-radius:13px;
-            box-shadow:0 20px 46px rgba(0,0,0,.62);outline:1px solid rgba(79,224,210,.4)}
+      .cardwrap{position:relative;margin-top:14px;flex:1;min-height:0;overflow:hidden;
+                border-radius:13px;box-shadow:0 20px 46px rgba(0,0,0,.62);
+                outline:1px solid rgba(79,224,210,.4)}
+      .cardwrap img{width:100%;display:block}
+      /* The card is taller than the space. Fade the cut so it reads as "there
+         is more of this", not as a screenshot that ran out of room. */
+      .cardwrap::after{content:'';position:absolute;inset:auto 0 0 0;height:80px;
+                       background:linear-gradient(rgba(16,21,25,0),rgba(16,21,25,.97))}
     `, `
       <div class="l">
         <div class="brand">${markSvg(34)} Earshot</div>
@@ -176,7 +198,7 @@ try {
                stroke-width="2"><rect x="5.5" y="2.5" width="9" height="15" rx="2.2"/></svg>
           Her phone, and only hers
         </span>
-        <img class="card" src="${cardImg}">
+        <div class="cardwrap"><img src="${cardImg}"></div>
       </div>`);
 
     made.push(await shoot(browser, html, 1200, 630, join(OUT, 'thumbnail.png')));

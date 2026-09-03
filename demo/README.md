@@ -36,29 +36,61 @@ Capture at **1920x1080 or larger** — at 1280x720 the smallest labels land near
 | `?raw=1` | with `?still=`, open the raw transcript overlay |
 | `?server=URL` | point at a specific MCP endpoint |
 | `?mode=scripted` | force fixtures even when a server is up |
+| `?direct=1` | skip the same-origin proxy and talk to the server directly |
+| `?person=dana` | link as somebody else — `sarah` (default), `margaret`, `dana`, `tom` |
 
-## Connecting the real server
+## Running it live
 
-On load the page probes `localhost:8787/mcp`, `:3000/mcp`, `:8080/mcp` and
-completes an MCP handshake against the first that answers. The header badge then
-reads **LIVE** in cyan with the server name and tool count, and the ledger shows
-a measured round-trip in ms per call.
+```
+npx tsc -p tsconfig.json && node dist/server.js    # the real server, :8787
+node demo/tools/serve.mjs                          # the demo,        :5174
+```
 
-With nothing listening it falls back to the fixtures in `scenario.js` and the
-badge reads **SCRIPTED** in amber. Scripted mode shows a dash for latency rather
-than a made-up number.
+On load the page links a real OAuth 2.1 + PKCE account, handshakes MCP over
+Streamable HTTP, and drives the eight real tools. The badge goes cyan —
+**LIVE · earshot · 8 tools** — and the ledger shows a measured round-trip per
+call. With nothing listening it falls back to the fixtures in `scenario.js`,
+the badge reads **SCRIPTED** in amber, and the latency column shows a dash
+rather than a made-up number.
 
-Two things the server has to do for a browser to reach it:
+**Both panes, and where each is fed from.** This is the architecture, so the
+demo has to honour it: the private payload is not in the MCP response and
+cannot be. Per `src/protocol/private-channel.ts`, putting it there would put it
+in the model's context, which is the after-the-fact filtering this project
+exists to argue against.
 
-- CORS with `Access-Control-Expose-Headers: Mcp-Session-Id`. Without that
-  header the handshake succeeds and every subsequent call fails, because the
-  browser cannot read the session id it is required to echo back.
-- Answer the `OPTIONS` preflight that a POST with `Content-Type:
-  application/json` plus `MCP-Protocol-Version` always triggers.
+| pane | endpoint | credential |
+|---|---|---|
+| left, the room | `POST /mcp` → `structuredContent.spoken` | the session's token |
+| right, her phone | `GET /inbox` → `deliveries[].fields` | **the asker's own** token |
 
-The result shape the page wants is documented at the top of `adapter.js`.
-`normalise()` is the whole contract surface; if the badge says
-`LIVE (shape unknown)`, that function is the only thing to fix.
+So the right pane is not a rendering of something the model was told. It is a
+second fetch, with a second credential, to a second endpoint.
+
+### The three helper routes in `serve.mjs`
+
+| route | why it exists |
+|---|---|
+| `/link` | Does the OAuth hop in Node. The browser cannot: `Location` on the authorize redirect is not in the server's `expose-headers`, and `redirect: 'manual'` hands JS an opaque response. |
+| `/x/mcp`, `/x/inbox` | Same-origin proxy. See the CORS note below. `?direct=1` bypasses it. |
+| `/secrets` | The server's own `DEMO_SECRETS` from `dist/domain/seed.js` — the canonical list of strings that must never be spoken, the same one `src/selftest` greps raw response bodies with. The verifier checks against this, not against a list the demo invented. |
+
+### Known server-side issue
+
+The **authenticated** `/mcp` success path returns no CORS headers at all.
+`src/server.ts` builds them in `corsHeaders()` and applies them to its own
+`sendJson` replies — the 401 has them — but once a request is handed to
+`StreamableHTTPServerTransport` the SDK writes the response and they are lost.
+A browser therefore cannot read the reply, nor `mcp-session-id`.
+
+Fix is one line upstream: set them on `res` before handing off to the
+transport. Until then the demo proxies through its own origin. Alexa+ itself
+talks server-to-server and will not care, but any browser MCP client will.
+
+### If the badge says `LIVE (shape unknown)`
+
+The server answered but `normalise()` in `adapter.js` could not find `spoken`.
+That function is the whole contract surface and it is about thirty lines.
 
 ## Files
 
@@ -78,16 +110,21 @@ node demo/tools/smoke.mjs              # renders every beat, re-checks the invar
 node demo/tools/verify-live.mjs        # drives the demo against a real MCP server, including a leaking one
 ```
 
-`verify-live.mjs` runs `tools/mock-mcp.mjs`, a test double with a different
-patient and a different drug from the fixtures, so a pass means the words on
-screen came over the wire. Its last two checks point the demo at a server that
-deliberately leaks, and assert the counter moves off 0 and the page goes red.
+With no arguments, `verify-live.mjs` runs `tools/mock-mcp.mjs` on :8791 — a
+test double that mirrors the real envelope and serves its own `/inbox`, but
+with different data, so a pass means the words on screen came over the wire.
+Its last two checks point the demo at a server that deliberately leaks
+(`MOCK_LEAK=1`) and assert the counter moves off 0 and the page goes red.
 
-Point it at the real thing once `src/` is up:
+Against the real server:
 
 ```
-node demo/tools/verify-live.mjs --server http://localhost:PORT/mcp
+node demo/tools/verify-live.mjs --server http://127.0.0.1:8787/mcp
 ```
+
+That run checks, among other things, that every string in the server's own
+protected list appears on the phone and none of them appears in the transcript,
+and that every round trip is inside the 500 ms ceiling in SPEC.md.
 
 ## Renderers
 

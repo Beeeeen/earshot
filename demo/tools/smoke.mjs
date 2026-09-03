@@ -65,8 +65,11 @@ try {
             // Display type set tighter than its own font size always reports
             // scrollHeight > clientHeight; that is the leading, not a clip.
             const tight = parseFloat(cs.lineHeight) < parseFloat(cs.fontSize);
+            // An ellipsis is a decision, not an accident. A ledger row is a
+            // log line and is allowed to trail off; a headline is not.
+            const truncates = cs.textOverflow === 'ellipsis';
             return (!tight && e.scrollHeight > e.clientHeight + 2) ||
-                   e.scrollWidth > e.clientWidth + 2;
+                   (!truncates && e.scrollWidth > e.clientWidth + 2);
           })
           .map((e) => (e.className || e.tagName) + ': ' + e.textContent.slice(0, 42))
           .slice(0, 4),

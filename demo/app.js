@@ -50,7 +50,7 @@
   const sleep = (ms) => new Promise((r) => setTimeout(r, REDUCED ? 0 : ms / SPEED));
 
   const state = { cursor: -1, busy: false, auto: false, soloEnd: 0, soloTimer: 0,
-                  declared: [] };
+                  declared: [], spokenBy: {} };
 
   /* Which values the invariant is about.
 
@@ -403,8 +403,15 @@
     const willCall = !!(beat.tool || window.EARSHOT_SCENARIO.FIXTURES[beat.id]);
     if (!willCall) { say('ready', beat.note || ''); return; }
 
-    say('calling', beat.tool ? beat.tool + '(' + Object.keys(beat.args || {}).join(', ') + ')'
-                             : 'room event');
+    // An injection beat puts the attack string dead centre of the frame at the
+    // moment it goes on the wire. It is the most important thing on screen for
+    // those two seconds and it belongs where a viewer is already looking.
+    if (beat.meta && beat.meta.note) {
+      say('calling', beat.tool + ' _meta: “' + beat.meta.note + '”');
+    } else {
+      say('calling', beat.tool ? beat.tool + '(' + Object.keys(beat.args || {}).join(', ') + ')'
+                               : 'room event');
+    }
     const res = await A.call(beat);
     if (!res) { say('done', beat.note || ''); return; }
     if (absorbDeclared(res)) renderChips();
@@ -430,6 +437,34 @@
     for (const d of res.disclosures || []) {
       ledgerRow(d, beat.at, first ? res.ms : null);
       first = false;
+    }
+
+    /* The injection beat. `compareWith` names an earlier beat that called the
+       same tool without an attack; if this answer is byte-identical, the
+       injection reached nothing. Compared here rather than asserted, and the
+       byte count is printed so it can be checked against the raw view. */
+    state.spokenBy[beat.id] = res.spoken;
+    if (beat.compareWith) {
+      const before = state.spokenBy[beat.compareWith];
+      const same = typeof before === 'string' && before === res.spoken;
+      ledgerRow({
+        state: same ? 'refused' : 'spoken',
+        what: same ? 'Injection changed nothing'
+                   : 'SPOKEN LINE CHANGED UNDER INJECTION',
+        detail: same
+          ? 'byte-identical, ' + res.spoken.length + ' chars'
+          : 'a finding, not a demo',
+      }, beat.at, null);
+      if (same) {
+        const li = el.transcript.lastElementChild;
+        const tags = li && li.querySelector('.tags');
+        if (tags) {
+          tags.insertAdjacentHTML('beforeend',
+            '<span class="chip" data-s="refused">' +
+            '<svg viewBox="0 0 20 20" aria-hidden="true">' + ICON.refused + '</svg>' +
+            'Unchanged under injection</span>');
+        }
+      }
     }
 
     if (beat.solo === 'open') startSolo();
@@ -461,6 +496,7 @@
   function reset() {
     state.cursor = -1;
     state.declared = [];
+    state.spokenBy = {};
     renderChips();
     el.transcript.innerHTML = '';
     for (const c of Array.from(el.cards.querySelectorAll('.card'))) c.remove();

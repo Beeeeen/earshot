@@ -7,7 +7,7 @@
     },
     {
       "file": "still-2.png",
-      "caption": "Told to read the medication name out loud, it refuses the channel — not the question."
+      "caption": "A prompt injection in the tool call orders it to speak the drug name. The spoken line comes back byte-identical."
     },
     {
       "file": "still-3.png",

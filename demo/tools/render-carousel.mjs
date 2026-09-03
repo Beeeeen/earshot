@@ -22,11 +22,14 @@ const W = 600;
 const H = 900;
 const DSF = 2;
 
+/* Describes the image as rendered. Kept next to the render so the two cannot
+   drift: if the quote in the poster changes, this line is wrong until it is
+   changed too. */
 const ALT =
-  'Earshot for Alexa+. The Echo says out loud: “I can’t put that one in the ' +
-  'room. It’s on your phone.” Below it, the private card on the asker’s own ' +
-  'phone showing medication, dose and diagnosis. Protected values spoken ' +
-  'aloud: 0.';
+  'Earshot for Alexa+. Top: what the Echo said out loud — that the doses were ' +
+  'taken, on time, and the details went to her phone. Below: the private card ' +
+  'on the asker’s own device, listing each medication and its dose. ' +
+  'Protected values spoken aloud: 0.';
 
 if (ALT.length > 250) {
   throw new Error(`alt text is ${ALT.length} characters, limit is 250`);
@@ -47,13 +50,25 @@ let out;
 try {
   const { page } = await openDemo(browser, server.url, 'speed=8&still=2',
     { width: 1920, height: 1080, deviceScaleFactor: DSF });
-  const box = await page.$eval('.card', (e) => {
+  const box = await page.evaluate(() => {
+    const all = document.querySelectorAll('.card');
+    const e = all[all.length - 1];
+    e.scrollIntoView({ block: 'nearest' });
     const r = e.getBoundingClientRect();
     return { x: r.x, y: r.y, width: r.width, height: r.height };
   });
+  if (box.y < 0 || box.height < 40) {
+    throw new Error('the card is not fully on screen — it would be captured blank');
+  }
   const cardImg = 'data:image/png;base64,' +
     Buffer.from(await page.screenshot({ clip: box })).toString('base64');
-  const said = await page.$eval('.utt-alexa[data-refused] .said', (e) => e.textContent);
+  // Live mode has no synthetic refusal flag -- the server's answer is the
+  // answer -- so fall back to the newest spoken line.
+  const said = await page.evaluate(() => {
+    const all = document.querySelectorAll('.utt-alexa .said');
+    const refused = document.querySelector('.utt-alexa[data-refused] .said');
+    return (refused || all[all.length - 1]).textContent;
+  });
   await page.close();
 
   const html = `<!doctype html><meta charset="utf-8"><style>

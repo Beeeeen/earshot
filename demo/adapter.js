@@ -157,6 +157,7 @@ window.EarshotAdapter = (function () {
       throw new Error('link failed: ' + (j.error || res.status));
     }
     const j = await res.json();
+    if (j.unsupported) throw new Error(j.error || 'no authorisation server');
     state.token = j.accessToken;
     return j;
   }
@@ -368,8 +369,10 @@ window.EarshotAdapter = (function () {
 
     if (state.mode === 'live' && beat.tool) {
       try {
-        const r = await rpc(state.url, 'tools/call',
-          { name: beat.tool, arguments: beat.args || {} });
+        const callParams = { name: beat.tool, arguments: beat.args || {} };
+        // Beats may carry an injection in _meta. It goes on the wire verbatim.
+        if (beat.meta) callParams._meta = beat.meta;
+        const r = await rpc(state.url, 'tools/call', callParams);
         let fresh = [];
         const sc = r.result && r.result.structuredContent;
         if (sc && sc.privateDelivery) {
