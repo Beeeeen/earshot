@@ -39,8 +39,10 @@ The label on the left reads *what the room hears*; on the right, *what only Sara
 > Did she take it, was she on time, when's the next one — that's said out loud,
 > because that's what the person in the room actually needed.
 
-**Screen:** `check_adherence` and `next_dose`. Left pane fills. Right pane stays empty.
-Ledger at the bottom starts counting.
+**Screen:** `check_adherence`. Left pane fills with the spoken answer **and** the card
+appears on the right — that split *is* the product, not a later reveal. Ledger starts
+counting. (An earlier draft had the right pane stay empty here; the real tool sends the
+detail on the first question, and the script now matches what the server does.)
 
 ---
 

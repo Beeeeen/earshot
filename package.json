@@ -22,7 +22,8 @@
     "voice": "node scripts/make-voice.mjs",
     "assemble": "node scripts/assemble.mjs",
     "captions": "node scripts/make-captions.mjs",
-    "thumbnail": "node scripts/make-thumbnail.mjs"
+    "thumbnail": "node scripts/make-thumbnail.mjs",
+    "record": "node demo/tools/record.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.20.0",
