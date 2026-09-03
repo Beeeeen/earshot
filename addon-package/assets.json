@@ -1,0 +1,31 @@
+{
+  "name": "Earshot",
+  "summary": "Care coordination for a device the whole room can hear.",
+  "icons": {
+    "light": {
+      "64": "icons/icon-light-64x64.png",
+      "72": "icons/icon-light-72x72.png",
+      "88": "icons/icon-light-88x88.png",
+      "126": "icons/icon-light-126x126.png",
+      "180": "icons/icon-light-180x180.png",
+      "241": "icons/icon-light-241x241.png"
+    },
+    "dark": {
+      "64": "icons/icon-dark-64x64.png",
+      "72": "icons/icon-dark-72x72.png",
+      "88": "icons/icon-dark-88x88.png",
+      "126": "icons/icon-dark-126x126.png",
+      "180": "icons/icon-dark-180x180.png",
+      "241": "icons/icon-dark-241x241.png"
+    },
+    "note": "Light-theme icons are the dark tile, for display on light surfaces; dark-theme icons are the near-white tile. All opaque, full-bleed, safe under any rounded mask."
+  },
+  "carousel": [
+    {
+      "file": "carousel-1-600x900.png",
+      "width": 600,
+      "height": 900,
+      "alt": "Earshot for Alexa+. The Echo says out loud: “I can’t put that one in the room. It’s on your phone.” Below it, the private card on the asker’s own phone showing medication, dose and diagnosis. Protected values spoken aloud: 0."
+    }
+  ]
+}

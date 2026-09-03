@@ -1,0 +1,1 @@
+It can't stop someone reading over your shoulder. It doesn't do voice identification — Amazon doesn't promise an add-on that context, so we didn't pretend to have it. And it isn't a compliance product. All of that is in the readme, because you'd have found it anyway.

@@ -1,0 +1,1 @@
+Everything it has ever said out loud is searchable. There's the drug name — nothing. And it isn't a filter running afterwards and hoping: a protected value has no path into a spoken string that the compiler will accept. This is what happens if you try to write one.

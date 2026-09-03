@@ -1,0 +1,25 @@
+{
+  "thumbnail": "The room hears the answer. Only her phone hears the drug name.",
+  "stills": [
+    {
+      "file": "still-1.png",
+      "caption": "One Echo, three people, one of them not family. The answer is spoken; the drug name is not."
+    },
+    {
+      "file": "still-2.png",
+      "caption": "Told to read the medication name out loud, it refuses the channel — not the question."
+    },
+    {
+      "file": "still-3.png",
+      "caption": "The same answer in full, on the asker’s own device, over the MCP Apps card."
+    },
+    {
+      "file": "still-4.png",
+      "caption": "Every word the room heard, searchable. “Furosemide”: no match, in 1,045 characters."
+    },
+    {
+      "file": "still-5.png",
+      "caption": "Four spoken answers, three channel shifts, two refusals, one sealed — and nothing protected said aloud."
+    }
+  ]
+}

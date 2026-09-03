@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Earshot — the room is an untrusted channel</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='9' fill='%23101519'/%3E%3Cpath d='M11 15a9 9 0 0 1 0 10' fill='none' stroke='%23FFB627' stroke-width='3' stroke-linecap='round'/%3E%3Crect x='22' y='9' width='10' height='22' rx='3' fill='none' stroke='%234FE0D2' stroke-width='3'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="./fonts/fonts.css">
+<link rel="stylesheet" href="./tokens.css">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ------------------------------------------------------------------ top -->
+  <header class="top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+        <path d="M9 13.5a11 11 0 0 1 0 13" fill="none" stroke="var(--amber)"
+              stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M16.5 9a18.5 18.5 0 0 1 0 22" fill="none" stroke="var(--amber)"
+              stroke-width="3.2" stroke-linecap="round" opacity=".55"/>
+        <rect x="24.5" y="7.5" width="11" height="25" rx="3.4"
+              fill="none" stroke="var(--cyan)" stroke-width="3.2"/>
+        <rect x="27.8" y="12.5" width="4.4" height="2.6" rx="1.3" fill="var(--cyan)"/>
+      </svg>
+      <div class="brand-txt">
+        <b>Earshot</b>
+        <span>the room is an untrusted channel</span>
+      </div>
+    </div>
+
+    <div class="now" id="now">
+      <span class="now-k" id="now-k">READY</span>
+      <span class="now-v" id="now-v">Press Space to begin</span>
+    </div>
+
+    <div class="conn" id="conn" data-mode="probing">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="conn-txt" id="conn-txt">probing MCP server…</span>
+    </div>
+  </header>
+
+  <!-- ---------------------------------------------------------------- stage -->
+  <main class="stage">
+
+    <!-- LEFT: the spoken channel. #transcript is the only element the invariant
+         guard and the verifier ever read. -->
+    <section class="pane room" aria-label="The room">
+      <div class="pane-head">
+        <span class="chan chan-amber">
+          <svg viewBox="0 0 20 20" aria-hidden="true" class="gl">
+            <path d="M4 8h3l4-3.5v11L7 12H4z" fill="currentColor"/>
+            <path d="M14 7.2a4 4 0 0 1 0 5.6" fill="none" stroke="currentColor"
+                  stroke-width="1.7" stroke-linecap="round"/>
+          </svg>
+          The room
+        </span>
+        <span class="pane-sub">Everything below was audible to everyone standing in it</span>
+        <span class="solo" id="solo" hidden>
+          <svg viewBox="0 0 20 20" class="gl" aria-hidden="true">
+            <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor"
+                    stroke-width="1.8" stroke-dasharray="3 2.6"/>
+            <path d="M10 6.4V10l2.4 1.6" fill="none" stroke="currentColor"
+                  stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          Solo window <b id="solo-t">5:00</b>
+        </span>
+      </div>
+
+      <ul class="presence" id="presence" aria-label="Within earshot"></ul>
+
+      <div class="transcript-wrap">
+        <ol class="transcript" id="transcript" aria-live="polite" aria-label="Spoken transcript"></ol>
+        <div class="fade-top" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <!-- MIDDLE: the two return channels of every tool, drawn as the types they
+         actually are. The travelling pill runs down whichever one carried it. -->
+    <div class="gutter" aria-hidden="true">
+      <p class="gutter-h">Every tool<br>returns two</p>
+      <div class="rail rail-amber" id="rail-spoken">
+        <span class="rail-lbl">spoken:<br>string</span>
+      </div>
+      <div class="rail rail-cyan" id="rail-private">
+        <span class="rail-lbl">private:<br>object</span>
+      </div>
+      <div class="pill" id="pill" hidden></div>
+      <p class="gutter-note">
+        Two types, <b>no cast between them</b>. A leak would have to be
+        expressible before it could happen.
+      </p>
+    </div>
+
+    <!-- RIGHT: the private channel. -->
+    <section class="pane phone-pane" aria-label="Sarah's phone">
+      <div class="pane-head">
+        <span class="chan chan-cyan">
+          <svg viewBox="0 0 20 20" aria-hidden="true" class="gl">
+            <rect x="5.5" y="2.5" width="9" height="15" rx="2.2" fill="none"
+                  stroke="currentColor" stroke-width="1.7"/>
+            <path d="M8.6 5.2h2.8" stroke="currentColor" stroke-width="1.7"
+                  stroke-linecap="round"/>
+          </svg>
+          Sarah's phone
+        </span>
+        <span class="pane-sub">Alexa+ conversation view · her device only</span>
+      </div>
+
+      <div class="device">
+        <div class="notch" aria-hidden="true"></div>
+        <div class="screen" id="screen">
+          <div class="screen-head">
+            <span class="screen-app">Alexa</span>
+            <span class="screen-sec">
+              <svg viewBox="0 0 20 20" class="gl" aria-hidden="true">
+                <rect x="4.5" y="8.6" width="11" height="7.4" rx="2" fill="currentColor"/>
+                <path d="M7 8.6V6.7a3 3 0 0 1 6 0v1.9" fill="none"
+                      stroke="currentColor" stroke-width="1.7"/>
+              </svg>
+              end-to-end · this device
+            </span>
+          </div>
+          <div class="cards" id="cards">
+            <p class="screen-empty" id="screen-empty">Nothing sent yet.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ---------------------------------------------------------------- strip -->
+  <footer class="strip">
+
+    <section class="ledger-box" aria-label="Disclosure ledger">
+      <h2 class="strip-h">Disclosure ledger</h2>
+      <ol class="ledger" id="ledger"></ol>
+      <p class="ledger-empty" id="ledger-empty">Nothing has happened yet.</p>
+    </section>
+
+    <section class="counter-box" aria-label="Protected values spoken aloud">
+      <div class="counter" id="counter">0</div>
+      <h2 class="counter-h">protected values spoken aloud</h2>
+      <p class="counter-sub" id="counter-sub">
+        counted by scanning the rendered transcript, not by trusting a variable
+      </p>
+    </section>
+
+    <section class="verify" aria-label="Verify the transcript yourself">
+      <h2 class="strip-h">
+        Don't take our word for it
+        <button class="raw-btn" id="raw-btn" type="button">Raw transcript</button>
+      </h2>
+      <div class="vfield">
+        <svg viewBox="0 0 20 20" class="gl" aria-hidden="true">
+          <circle cx="9" cy="9" r="5.4" fill="none" stroke="currentColor" stroke-width="1.9"/>
+          <path d="M13.1 13.1 17 17" stroke="currentColor" stroke-width="1.9"
+                stroke-linecap="round"/>
+        </svg>
+        <label class="sr-only" for="q">Search the spoken transcript</label>
+        <input id="q" type="search" spellcheck="false" autocomplete="off"
+               placeholder="search everything the room heard">
+      </div>
+      <div class="chips" id="chips"></div>
+      <div class="vresult" id="vresult">
+        <div class="vcol vcol-room">
+          <b id="v-room">—</b>
+          <span>in the room<i id="v-room-sub">out of 0 characters</i></span>
+        </div>
+        <div class="vcol vcol-phone">
+          <b id="v-phone">—</b>
+          <span>on Sarah's phone<i id="v-phone-sub">the value does exist</i></span>
+        </div>
+      </div>
+    </section>
+  </footer>
+
+  <div class="hint" id="hint">
+    <kbd>Space</kbd> next · <kbd>&larr;</kbd> back · <kbd>R</kbd> reset · <kbd>A</kbd> autoplay
+  </div>
+</div>
+
+<!-- ------------------------------------------------------------- overlays -->
+<div class="raw-overlay" id="raw" hidden>
+  <div class="raw-box">
+    <header>
+      <h2>Every character the room heard</h2>
+      <p id="raw-meta">—</p>
+      <button id="raw-close" type="button" aria-label="Close">Close</button>
+    </header>
+    <pre id="raw-pre"></pre>
+    <footer id="raw-foot"></footer>
+  </div>
+</div>
+
+<div class="breach" id="breach" hidden>
+  <div>
+    <h2>INVARIANT VIOLATED</h2>
+    <p id="breach-txt"></p>
+  </div>
+</div>
+
+<script src="./scenario.js"></script>
+<script src="./adapter.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+/* ---------------------------------------------------------------------------
+   Earshot design tokens.
+
+   Every value here is checked by demo/tools/check-contrast.py, which must pass
+   before this file is edited. Three metrics, because "is this readable" and
+   "are these two chips tellable apart" are different questions:
+   WCAG ratio for text, CIE L* delta for surfaces, CIEDE2000 (normal +
+   simulated dichromacy) for the state colours.
+
+   The whole product is one idea -- two channels -- so the palette is built on
+   exactly two channel hues, and every other colour is a modifier of one of them.
+
+     amber   the room. Warm, exposed, audible to whoever is standing there.
+     cyan    the private channel. Cool, sealed, one device.
+     rose    refused outright.
+     violet  sealed: not even the private channel carries it.
+
+   There is deliberately no success green: a green lands ~15 dE from cyan in
+   normal vision and ~6 dE from rose under deuteranopia, so it would be
+   confusable with both PRIVATE and REFUSED. Affirmative states reuse cyan and
+   the headline counter is set in plain ink.
+--------------------------------------------------------------------------- */
+
+:root {
+  /* grounds */
+  --page:      #070A0D;
+  --room:      #151A20;
+  --room-card: #1D242C;
+  --phone:     #0C1216;
+  --phone-card:#152026;
+  --ledger:    #101519;
+
+  /* ink */
+  --ink:  #F3F6F8;
+  --ink2: #B9C6D0;
+  --ink3: #8496A3;
+
+  /* channels + states */
+  --amber:  #FFB627;
+  --cyan:   #4FE0D2;
+  --rose:   #FF7A88;
+  --violet: #BBA5FF;
+
+  /* tinted washes, for chip grounds and pane atmosphere. Kept low enough that
+     the text ratios measured against the flat ground above still hold. */
+  --amber-wash:  rgba(255, 182, 39, 0.10);
+  --amber-line:  rgba(255, 182, 39, 0.34);
+  --cyan-wash:   rgba(79, 224, 210, 0.10);
+  --cyan-line:   rgba(79, 224, 210, 0.34);
+  --rose-wash:   rgba(255, 122, 136, 0.11);
+  --rose-line:   rgba(255, 122, 136, 0.36);
+  --violet-wash: rgba(187, 165, 255, 0.11);
+  --violet-line: rgba(187, 165, 255, 0.34);
+  --hairline:    rgba(185, 198, 208, 0.14);
+  --hairline-2:  rgba(185, 198, 208, 0.24);
+
+  /* type */
+  --sans: 'Inter', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  /* Everything sizes off the root, and the root sizes off the viewport, so the
+     same page fills a 1280x720 preview and a 2560x1440 capture without a
+     separate layout. 0.8333vw = 16px at 1920. */
+  --step: 4px;
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 22px;
+
+  --dur-fast: 160ms;
+  --dur: 240ms;
+  --dur-slow: 700ms;
+  --ease: cubic-bezier(0.22, 0.7, 0.24, 1);
+}

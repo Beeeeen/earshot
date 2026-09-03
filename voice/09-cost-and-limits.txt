@@ -1,0 +1,1 @@
+Alexa+ gives an add-on five hundred milliseconds. The slowest tool here has a ninety-fifth percentile of eleven — measured on loopback, so the network isn't in that number, but the server's own work never crosses nine. Two hundred and seventy-nine checks pass, including an attack suite whose only job is to get a protected value spoken out loud.
