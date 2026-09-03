@@ -1,7 +1,7 @@
 # Earshot — Devpost submission
 
-> DRAFT. Every `__PLACEHOLDER__` must be replaced with a measured value before
-> submitting, and the whole text reconciled against what was actually built.
+> Every number here is measured, not estimated. Reconciled against the built
+> system on 2026-09-04: `npm run test:all` and `npm run demo`.
 
 **Alexa+ track.** Mini challenge: Open Source.
 
@@ -154,7 +154,7 @@ visiting aide the names of the exact categories she is denied.
 
 None of those were found by reading the code, and none by testing that the
 features work. They were found by writing something whose only goal was to make
-the product lie. __FIXES_SUMMARY__
+the product lie. Twenty-five of the thirty-eight are closed, and the tests were not touched to close them — a finding shuts because the code changed. The thirteen that remain stay in the output with their names on, because a suite containing only the assertions the code passes is not evidence of anything. One of them is a real limit we could not close: any module that imports a reveal capability holds it, and the language gives us no boundary that would prevent it, so instead a self-test greps the shipped tree and fails the build if any module beyond the three legitimate holders mentions one. That is a mitigation, and the README calls it a mitigation.
 
 **The solo window nearly shipped as a backdoor. It is meant to cover one device for five minutes, and "this device" is the transport's session id — but nothing forced that id to exist. A transport that supplied none would have opened a window covering *every* device at once, silently, which is the exact opposite of the feature. It now fails closed: it refuses out loud and writes a denied row. The lesson is that an escape hatch is the most dangerous code in a project like this, because it is the one place where the guarantee is deliberately switched off, and it deserves more suspicion than the guarantee itself.**
 
@@ -168,7 +168,7 @@ security claim you cannot check is worth less than a smaller one you can.
 And an attack suite whose entire job is to get a protected value spoken aloud,
 where a failure is a finding rather than a broken test — reported by the test
 runner as an open finding rather than quietly excluded from a headline number.
-__CHECKS_FINAL__
+307 checks pass; 38 findings are tracked beside them, 25 now closed and 13 still failing and named in the runner's own output.
 
 ## What we learned
 

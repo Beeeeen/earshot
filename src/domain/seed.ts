@@ -74,8 +74,20 @@ interface MedSpec {
 
 /**
  * A realistic regimen for congestive heart failure with atrial fibrillation.
+ *
  * `spokenHandle` is what the assistant may say aloud when it must distinguish
- * one item from another: "the morning one", not "the Furosemide".
+ * one item from another. It names the *slot* — time of day and position in the
+ * list — and nothing clinical: "the first morning one", not "the morning water
+ * pill". The earlier handles named the drug class, which is the protected
+ * `indication` restated in plainer words, and "the morning potassium" carried
+ * a word out of the protected `name` verbatim. Class-free handles also close
+ * the inference route: handle + schedule no longer reconstructs
+ * loop-diuretic + potassium + rate-control + anticoagulant, i.e. the protected
+ * diagnosis at coarser resolution. See test/attack/metadata.test.ts (F7).
+ *
+ * The residual disclosure is deliberate and stated: the handles reveal how
+ * many items exist and at which times, because a person who is told "take the
+ * second morning one" needs exactly that much to act.
  */
 const MEDS: readonly MedSpec[] = [
     {
@@ -85,7 +97,7 @@ const MEDS: readonly MedSpec[] = [
         indication: 'fluid retention from congestive heart failure',
         instructions: 'Take in the morning. Expect extra trips to the bathroom for about four hours.',
         schedule: ['08:00'],
-        handle: 'the morning water pill'
+        handle: 'the first morning one'
     },
     {
         id: 'med_metoprolol',
@@ -94,7 +106,7 @@ const MEDS: readonly MedSpec[] = [
         indication: 'heart rate control in atrial fibrillation',
         instructions: 'Take with food, morning and evening. Do not stop suddenly.',
         schedule: ['08:00', '20:00'],
-        handle: 'the twice-daily heart pill'
+        handle: 'the first of the twice-daily pair'
     },
     {
         id: 'med_apixaban',
@@ -103,7 +115,7 @@ const MEDS: readonly MedSpec[] = [
         indication: 'stroke prevention in atrial fibrillation',
         instructions: 'Twice daily, twelve hours apart. Report any unusual bruising.',
         schedule: ['08:00', '20:00'],
-        handle: 'the twice-daily blood thinner'
+        handle: 'the second of the twice-daily pair'
     },
     {
         id: 'med_atorvastatin',
@@ -112,7 +124,7 @@ const MEDS: readonly MedSpec[] = [
         indication: 'cholesterol',
         instructions: 'Take in the evening.',
         schedule: ['20:00'],
-        handle: 'the evening cholesterol pill'
+        handle: 'the evening one'
     },
     {
         id: 'med_potassium',
@@ -121,7 +133,7 @@ const MEDS: readonly MedSpec[] = [
         indication: 'replacing potassium lost to the water pill',
         instructions: 'Take with a full glass of water, in the morning.',
         schedule: ['08:00'],
-        handle: 'the morning potassium'
+        handle: 'the second morning one'
     }
 ];
 

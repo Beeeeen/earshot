@@ -46,7 +46,18 @@ export class Store {
     readonly deliveries: Delivery[] = [];
     readonly soloWindows: SoloWindow[] = [];
 
-    constructor(readonly clock: Clock) {}
+    /**
+     * Written as an explicit field rather than a TypeScript parameter
+     * property: parameter properties are erased-with-emit syntax, which
+     * `node --test --experimental-strip-types` refuses
+     * (ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX). This one line was enough to make
+     * `src/` unloadable under the runner the package declares.
+     */
+    readonly clock: Clock;
+
+    constructor(clock: Clock) {
+        this.clock = clock;
+    }
 
     person(id: PersonId): Person | undefined {
         return this.people.get(id);

@@ -25,6 +25,7 @@ import type { ToolResult } from '../core/result.js';
 import type { Asker } from '../domain/authz.js';
 import type { Store } from '../domain/store.js';
 import type { PersonId } from '../domain/types.js';
+import { ledgerCategoryOf } from '../tools/scopes.js';
 import { deliverPrivately } from './private-channel.js';
 import { LATENCY_BUDGET_MS, round } from './timing.js';
 
@@ -57,6 +58,19 @@ export const EARSHOT_OUTPUT_SHAPE = {
     note: z.string().nullable().describe('Guidance for the assistant about what it may and may not say.')
 };
 
+/**
+ * The output schema is metadata: it reaches the model through `tools/list`,
+ * outside every tool call and outside the envelope's own scans. It is built
+ * from string literals here, so this can only fire if someone edits one of
+ * them into a protected value — which is exactly the edit worth catching.
+ * Same reasoning as the metadata scan in tools/kit.ts (F9).
+ */
+for (const [key, schema] of Object.entries(EARSHOT_OUTPUT_SHAPE)) {
+    assertNoTaint(key, 'EARSHOT_OUTPUT_SHAPE key');
+    const described = (schema as { description?: unknown }).description;
+    if (typeof described === 'string') assertNoTaint(described, `EARSHOT_OUTPUT_SHAPE.${key}.description`);
+}
+
 export interface EnvelopeContext {
     readonly store: Store;
     readonly asker: Asker;
@@ -84,6 +98,24 @@ export function toCallToolResult(r: ToolResult, ctx: EnvelopeContext): CallToolR
     if (r.data) assertNoTaintDeep(r.data, `${ctx.tool}.data`);
     if (r.sealedRefs) assertNoTaintDeep(r.sealedRefs, `${ctx.tool}.sealedRefs`);
 
+    // --- everything below this line commits or none of it does --------------
+    // The deliveries and the ledger rows used to be written before the final
+    // deep scan, so a failure after the first delivery left it in the store
+    // while src/server.ts answered "Nothing was disclosed." — which was then
+    // false (F11). The two arrays are the only mutable state this function
+    // touches, so a length reset is a complete rollback.
+    const deliveriesBefore = ctx.store.deliveries.length;
+    const ledgerBefore = ctx.store.ledger.length;
+    try {
+        return commit(r, ctx);
+    } catch (err) {
+        ctx.store.deliveries.length = deliveriesBefore;
+        ctx.store.ledger.length = ledgerBefore;
+        throw err;
+    }
+}
+
+function commit(r: ToolResult, ctx: EnvelopeContext): CallToolResult {
     // --- route the private half to the other channel ------------------------
     let receipt: { deliveryId: string; fieldCount: number; recipient: string; channel: 'linked-device' } | null = null;
     if (r.privately && r.privately.fields.length > 0) {
@@ -134,6 +166,7 @@ export function toCallToolResult(r: ToolResult, ctx: EnvelopeContext): CallToolR
         actorId: ctx.asker.personId,
         tool: ctx.tool,
         channel: solo ? 'solo-window' : 'spoken',
+        category: ledgerCategoryOf(ctx.tool),
         what: 'spoken answer',
         detail: `${r.spoken.length} characters said aloud`
     });

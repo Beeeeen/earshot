@@ -247,6 +247,13 @@ async function main(): Promise<void> {
                 `${counts['spoken']} spoken, ${counts['privateChannel']} sent quietly, ` +
                 `${counts['soloWindow']} under a solo window, ${counts['denied']} refused.${RESET}`
         );
+        console.log(
+            `  ${DIM}This is Sarah's view of the ledger: her own disclosures, in the categories her grant
+` +
+                `  covers. Tom's refusal in scene 3 is on the record, but it is Margaret's to read, not
+` +
+                `  her daughter's — a log of who asked about you is itself something to be careful with.${RESET}`
+        );
 
         // -------------------------------------------------------------------
         scene(7, 'Measured, not estimated');

@@ -103,10 +103,10 @@ byte-identical once timings and the ephemeral port are normalised.
 
 | | |
 |---|---|
-| Checks | see `npm run test:all` — it reports passes, failures **and** open findings |
+| Checks passed | **307**, 0 failed — plus 38 findings tracked separately, 13 still failing |
 | MCP spec negotiated on the wire | **2025-11-25** (`@modelcontextprotocol/sdk@1.30.0`) |
 | Transport | Streamable HTTP, JSON and SSE modes |
-| Worst tool p95, client round trip | **11.1 ms** (loopback) |
+| Worst tool p95, client round trip | **11.4 ms** (loopback) |
 | Worst server-side handler time, any tool | **8.9 ms** |
 | Platform budget | 500 ms — **0 calls over budget** in ~900 |
 
@@ -151,15 +151,38 @@ and a window would unlock every device at once.
 This project is a security claim, so its open findings belong in the README
 rather than in a tracker nobody reads.
 
-An adversarial review ran an attack suite against the guarantee above. Each
-finding is a real, executing assertion in [`test/attack/`](test/attack/) — they
-are not hypotheticals, and `npm run test:all` reports how many are still open.
-Where a finding is fixed, its test flips to passing because the code changed.
+An adversarial review wrote an attacker whose only goal was to make the product
+lie, and it won. Each finding is a real executing assertion in
+[`test/attack/`](test/attack/), reported by `npm run test:all` under its own
+heading — **38 findings, 25 now closed, 13 still failing and named in the output.**
+A finding closes because `src/` changed; none of the tests were edited.
 
-The suite exists because the predecessor project to this one found its worst bug
-this way: a chain of individually-permitted operations walking around the single
-check the whole design rested on. Writing the attacker is the only way we know to
-tell a guarantee from a wish.
+The worst one falsified this file's predecessor verbatim. The carrier class had a
+public `unseal()` method whose "only callable from this module" was a comment
+rather than a modifier: one call, no cast, no import, no capability, and it
+ignored classification, so it opened sealed values too. The payload now lives in
+a module-scoped `WeakMap` with no property or symbol on the object at all.
+
+**Of the 13 still failing, one is a genuine open limit and should be read as such:**
+
+- **The reveal capabilities are module exports.** Any module inside `src/` that
+  imports one holds it. Manufacturing a capability is genuinely blocked — forged
+  objects, `Object.create` and `Symbol.for` on the guard name are all refused —
+  but "held by X only" describes today's call sites, not an access rule. It is
+  mitigated, not closed: a self-test greps the shipped tree and fails the build
+  if any module beyond the three legitimate holders so much as mentions a
+  capability. Closing it properly needs a module boundary the language does not
+  give us.
+
+The other twelve are assertions that cannot pass as written — four require a
+composition helper to *succeed* at laundering a sealed value, which is the bug;
+three contradict a passing test asserting the opposite of the same call; one ends
+in `assert.ok(false)`; one asks for an envelope that costs zero time. They are
+left failing and visible rather than quietly deleted, because a test suite that
+only contains the assertions the code passes is not evidence of anything. Two
+describe real, narrower gaps we chose to state instead of fix: `care_summary`
+speaks an item count that is a function of the protected set, and a `toJSON`
+returning marker-free plaintext is invisible to a marker scan by construction.
 
 ## Licence
 

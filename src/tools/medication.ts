@@ -20,7 +20,8 @@ import { activeSoloWindow, underSolo } from '../domain/solo.js';
 import type { Store } from '../domain/store.js';
 import { nextId } from '../domain/store.js';
 import type { DoseEvent, Medication, PersonId } from '../domain/types.js';
-import { defineTool, humanGap, SUBJECT_INPUT, type ToolCtx } from './kit.js';
+import { defineTool, humanGap, resolveSubject, SUBJECT_INPUT, type ToolCtx } from './kit.js';
+import { ledgerCategoryOf } from './scopes.js';
 
 function tzOf(store: Store, subjectId: PersonId): string {
     return store.person(subjectId)?.timeZone ?? HOUSEHOLD_TZ;
@@ -72,7 +73,7 @@ export const checkAdherence = defineTool({
     },
     run: (args, ctx): ToolResult => {
         const { store, asker } = ctx;
-        const subjectId = args.subject ? String(args.subject).toLowerCase() : 'margaret';
+        const subjectId = resolveSubject(args.subject);
         const tz = tzOf(store, subjectId);
         const who = subjectName(store, subjectId);
 
@@ -116,7 +117,12 @@ export const checkAdherence = defineTool({
         const solo = activeSoloWindow(store, asker.personId, subjectId, asker.deviceSessionId);
         const medGrant = canReceivePrivate(store, asker.personId, subjectId, 'medication');
         if (solo && medGrant.allowed) {
-            const speak = underSolo({ store, window: solo, tool: 'check_adherence' });
+            const speak = underSolo({
+                store,
+                window: solo,
+                tool: 'check_adherence',
+                reader: { personId: asker.personId, deviceSessionId: asker.deviceSessionId }
+            });
             const lines = slice.all
                 .map(d => {
                     const med = store.medications.get(d.medicationId);
@@ -181,6 +187,7 @@ function denied(ctx: ToolCtx, subjectId: PersonId, tool: string, who: string): T
         actorId: ctx.asker.personId,
         tool,
         channel: 'denied',
+        category: ledgerCategoryOf(tool),
         what: 'access check',
         detail: 'no grant on file'
     });
@@ -203,7 +210,7 @@ export const nextDose = defineTool({
     inputShape: { ...SUBJECT_INPUT },
     run: (args, ctx): ToolResult => {
         const { store, asker } = ctx;
-        const subjectId = args.subject ? String(args.subject).toLowerCase() : 'margaret';
+        const subjectId = resolveSubject(args.subject);
         const tz = tzOf(store, subjectId);
         const who = subjectName(store, subjectId);
 
@@ -223,7 +230,12 @@ export const nextDose = defineTool({
         const solo = activeSoloWindow(store, asker.personId, subjectId, asker.deviceSessionId);
         const medGrant = canReceivePrivate(store, asker.personId, subjectId, 'medication');
         if (solo && medGrant.allowed) {
-            const speak = underSolo({ store, window: solo, tool: 'next_dose' });
+            const speak = underSolo({
+                store,
+                window: solo,
+                tool: 'next_dose',
+                reader: { personId: asker.personId, deviceSessionId: asker.deviceSessionId }
+            });
             const names = sameSlot
                 .map(d => store.medications.get(d.medicationId))
                 .filter((m): m is Medication => m !== undefined)
@@ -271,7 +283,7 @@ export const logDose = defineTool({
     },
     run: (args, ctx): ToolResult => {
         const { store, asker } = ctx;
-        const subjectId = args.subject ? String(args.subject).toLowerCase() : 'margaret';
+        const subjectId = resolveSubject(args.subject);
         const tz = tzOf(store, subjectId);
         const who = subjectName(store, subjectId);
 

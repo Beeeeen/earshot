@@ -6,6 +6,9 @@
  * stringification path back to the plaintext, and that the tripwire throws.
  */
 
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { inspect } from 'node:util';
 
 import {
@@ -183,6 +186,78 @@ export async function run(): Promise<void> {
         );
     });
 
+    group('the vault');
+
+    await check('unseal() is a tombstone: it returns a redaction, never the payload', () => {
+        const secret = priv(SECRET, 'medication name', 'medication');
+        const door = secret as unknown as { unseal(): string };
+        const out = door.unseal();
+        excludes(out, SECRET, 'the public unseal() door must not hand back the payload');
+        includes(out, 'withheld', 'and it should say what it is withholding');
+        // ...and it does not fabricate a marker either, so nothing downstream
+        // mistakes a redaction for a leak.
+        excludes(out, '\u27e6earshot:', 'a redaction is not a taint marker');
+    });
+
+    await check('unseal() opens a sealed value no more than a private one', () => {
+        const address = sealed('1184 Alameda de las Pulgas', 'home address', 'identity');
+        const out = (address as unknown as { unseal(): string }).unseal();
+        excludes(out, 'Alameda', 'a sealed payload must not come back out of any public method');
+    });
+
+    await check('the payload is not an own property, a symbol key or a descriptor', () => {
+        const secret = priv(SECRET, 'medication name', 'medication') as unknown as object;
+        equal(Object.getOwnPropertyNames(secret).join(','), 'label,category,classification', 'three metadata fields only');
+        equal(Object.getOwnPropertySymbols(secret).length, 0, 'no own symbol-keyed data');
+        excludes(JSON.stringify(Object.getOwnPropertyDescriptors(secret)), SECRET, 'no descriptor carries the payload');
+    });
+
+    await check('a reveal capability appears only at its definition site and its two sanctioned callers', () => {
+        // The tokens are module exports, so the language does not enforce
+        // "held by these two only" (finding F2, documented in the module doc
+        // of core/protected.ts). What CAN be enforced is that no third module
+        // in the shipped tree quietly acquires one, and this check fails the
+        // suite when one does. The self-test and the compile fixtures are
+        // excluded: neither ships, and both exist to exercise these very
+        // functions.
+        // Resolve the *source* tree, not wherever this file is running from:
+        // the self-test runs out of dist/, whose .d.ts files would otherwise
+        // be scanned instead of the code they describe.
+        let root = dirname(fileURLToPath(import.meta.url));
+        while (!existsSync(join(root, 'package.json'))) {
+            const up = dirname(root);
+            assert(up !== root, 'could not find the repository root from the self-test');
+            root = up;
+        }
+        const srcRoot = join(root, 'src');
+        const allowed = new Set(['core/protected.ts', 'protocol/private-channel.ts', 'domain/solo.ts']);
+        const skip = ['selftest', 'negative'];
+
+        const walk = (dir: string): string[] => {
+            const out: string[] = [];
+            for (const entry of readdirSync(dir)) {
+                const full = join(dir, entry);
+                if (statSync(full).isDirectory()) {
+                    if (skip.includes(entry)) continue;
+                    out.push(...walk(full));
+                } else if (/\.m?ts$/.test(entry)) {
+                    out.push(full);
+                }
+            }
+            return out;
+        };
+
+        const holders = walk(srcRoot)
+            .filter(f => /PRIVATE_CHANNEL_CAPABILITY|SOLO_WINDOW_CAPABILITY/.test(readFileSync(f, 'utf8')))
+            .map(f => relative(srcRoot, f).replace(/\\/g, '/'))
+            .sort();
+
+        for (const f of holders) {
+            assert(allowed.has(f), `${f} holds a reveal capability; only ${[...allowed].join(', ')} may`);
+        }
+        assert(holders.length === allowed.size, `expected ${allowed.size} holders, found ${holders.length}: ${holders.join(', ')}`);
+    });
+
     group('composition inside the vault');
 
     await check('composePrivate returns a protected value, not a string', () => {
@@ -194,6 +269,14 @@ export async function run(): Promise<void> {
             revealToPrivateChannel(composed, PRIVATE_CHANNEL_CAPABILITY),
             `${SECRET} 40 mg`,
             'composition must preserve the parts for the private channel'
+        );
+    });
+    await check('composePrivate refuses a sealed part at runtime, not only at compile time', async () => {
+        const address = sealed('1184 Alameda de las Pulgas', 'home address', 'identity');
+        await throws(
+            () => composePrivate('note', 'medication', [address as never]),
+            'refused sealed',
+            'a composition must not launder a sealed value into a private one'
         );
     });
     /* eslint-enable @typescript-eslint/no-explicit-any */

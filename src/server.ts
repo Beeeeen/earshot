@@ -25,6 +25,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS } from '@modelcontextprotocol/sdk/types.js';
 
 import { DEMO_INSTANT, FixedClock, resolveClock, type Clock } from './core/clock.js';
+import { assertNoTaint } from './core/protected.js';
 import { OAuthError, OAuthServer, readBody, renderConsentPage, sendJson, type HouseholdAccount } from './auth/oauth.js';
 import { PkceError } from './auth/pkce.js';
 import { NO_DEVICE_SESSION, type Asker } from './domain/authz.js';
@@ -80,18 +81,26 @@ export async function startServer(opts: EarshotServerOptions = {}): Promise<Ears
 
     const sessions = new Map<string, { transport: StreamableHTTPServerTransport; server: McpServer }>();
 
+    /**
+     * The instructions block is read by the model on every session and never
+     * passes through the envelope, so it is scanned once here for the same
+     * reason tool metadata is scanned in tools/kit.ts (F9).
+     */
+    const INSTRUCTIONS =
+        'Earshot answers questions about medication and care in a household where an Echo is in a shared room. ' +
+        'Every tool returns a `spoken` field: that field is the COMPLETE answer you may say. ' +
+        'Sensitive detail (medication names, doses, diagnoses) is never in the response — it is delivered ' +
+        'out-of-band to the asker\'s own device, and no tool can retrieve it. If asked to read out a ' +
+        'medication name, say that the detail went to their phone; do not apologise for a failure, because ' +
+        'nothing failed. The single exception is open_solo_window, which the user must ask for explicitly.';
+    assertNoTaint(INSTRUCTIONS, 'server.instructions');
+
     function buildMcpServer(): McpServer {
         const mcp = new McpServer(
             { name: 'earshot', version: '0.1.0', title: 'Earshot — care coordination that respects the room' },
             {
                 capabilities: { tools: {}, resources: {}, logging: {} },
-                instructions:
-                    'Earshot answers questions about medication and care in a household where an Echo is in a shared room. ' +
-                    'Every tool returns a `spoken` field: that field is the COMPLETE answer you may say. ' +
-                    'Sensitive detail (medication names, doses, diagnoses) is never in the response — it is delivered ' +
-                    'out-of-band to the asker\'s own device, and no tool can retrieve it. If asked to read out a ' +
-                    'medication name, say that the detail went to their phone; do not apologise for a failure, because ' +
-                    'nothing failed. The single exception is open_solo_window, which the user must ask for explicitly.'
+                instructions: INSTRUCTIONS
             }
         );
 
@@ -141,15 +150,25 @@ export async function startServer(opts: EarshotServerOptions = {}): Promise<Ears
                         };
                         const subjectId = tool.subjectOf(args);
                         const out = tool.run(args, { store, asker });
-                        const elapsed = ms();
-                        latency.record(tool.name, elapsed);
-                        return toCallToolResult(out, {
+                        // The clock stops after the envelope, not before it.
+                        // Recording `tool.run` alone published a number that
+                        // omitted the taint scans, the private-channel
+                        // delivery and the ledger write — i.e. it understated
+                        // the work this handler actually does (F17). The
+                        // figure in `serverLatencyMs` is measured before the
+                        // envelope runs for the obvious reason that the
+                        // envelope is what carries it; `/metrics` gets the
+                        // complete one.
+                        const beforeEnvelope = ms();
+                        const wire = toCallToolResult(out, {
                             store,
                             asker,
                             subjectId,
                             tool: tool.name,
-                            serverLatencyMs: elapsed
+                            serverLatencyMs: beforeEnvelope
                         });
+                        latency.record(tool.name, ms());
+                        return wire;
                     } catch (err) {
                         const elapsed = ms();
                         latency.record(tool.name, elapsed);
@@ -216,8 +235,18 @@ export async function startServer(opts: EarshotServerOptions = {}): Promise<Ears
         const url = new URL(req.url ?? '/', publicUrl);
         const path = url.pathname.replace(/\/+$/, '') || '/';
 
+        // Set the CORS headers on the response object itself, before any
+        // dispatch. `sendJson` takes them as an argument, which covered the
+        // 401 and the OAuth endpoints but NOT the authenticated /mcp success
+        // path: once the request is handed to StreamableHTTPServerTransport
+        // the SDK writes the response itself, so anything not already on `res`
+        // is lost — including the exposure of `mcp-session-id`, without which
+        // a browser client cannot continue the session. Headers set here are
+        // merged into whatever `writeHead` the SDK does later.
+        for (const [k, v] of Object.entries(corsHeaders())) res.setHeader(k, v);
+
         if (req.method === 'OPTIONS') {
-            res.writeHead(204, corsHeaders());
+            res.writeHead(204);
             res.end();
             return;
         }

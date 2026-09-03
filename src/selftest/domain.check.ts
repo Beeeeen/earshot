@@ -194,6 +194,49 @@ export async function run(): Promise<void> {
         );
     });
 
+    await check('opening a solo window needs a grant, at the domain layer and not only in the tool', async () => {
+        const s = seedHousehold(new FixedClock(DEMO_INSTANT));
+        equal(canAsk(s, TOM, MARGARET).allowed, false, 'Tom holds no grant');
+        await throws(
+            () => openSoloWindow(s, TOM, MARGARET, 'porch-echo'),
+            'no grant on file',
+            'the neighbour must not open a disclosure window over Margaret'
+        );
+        equal(s.soloWindows.length, 0, 'and no window is created');
+    });
+
+    await check('a solo window speaks only the categories the reader was granted', () => {
+        const s = seedHousehold(new FixedClock(DEMO_INSTANT));
+        // Dana is granted medication, schedule and symptom -- not diagnosis.
+        equal(canReceivePrivate(s, DANA, MARGARET, 'diagnosis').allowed, false, 'the aide has no diagnosis grant');
+        const w = openSoloWindow(s, DANA, MARGARET, 'bedroom-echo');
+        const diagnosis = priv('Congestive heart failure, NYHA class II', 'diagnosis', 'diagnosis');
+        const name = priv('Furosemide', 'medication name', 'medication');
+        const spoken = underSolo({ store: s, window: w, tool: 'test' })`${name}. Diagnosis: ${diagnosis}.`;
+        includes(spoken, 'Furosemide', 'the category she does hold is spoken');
+        excludes(spoken, 'Congestive heart failure', 'the category she does not hold is withheld');
+        assert(
+            s.ledger.some(e => e.channel === 'denied' && e.what === 'diagnosis'),
+            'and the refusal is recorded as loudly as the disclosure'
+        );
+    });
+
+    await check('a solo window refuses a reader who is not the account that opened it', async () => {
+        const s = seedHousehold(new FixedClock(DEMO_INSTANT));
+        const w = openSoloWindow(s, SARAH, MARGARET, 'kitchen-echo');
+        const name = priv('Furosemide', 'medication name', 'medication');
+        await throws(
+            () => underSolo({ store: s, window: w, tool: 'test', reader: { personId: DANA, deviceSessionId: 'kitchen-echo' } })`${name}`,
+            'another account',
+            "Sarah's declaration must unlock nothing for Dana"
+        );
+        await throws(
+            () => underSolo({ store: s, window: w, tool: 'test', reader: { personId: SARAH, deviceSessionId: 'bedroom-echo' } })`${name}`,
+            'another device',
+            'a window opened in the kitchen must unlock nothing in the bedroom'
+        );
+    });
+
     await check('opening a solo window is itself written to the ledger', () => {
         const s = seedHousehold(new FixedClock(DEMO_INSTANT));
         const before = s.ledger.length;

@@ -19,7 +19,17 @@ import { PRIVATE_CHANNEL_CAPABILITY, revealToPrivateChannel } from '../core/prot
 import type { PrivatePayload, SealedRef } from '../core/result.js';
 import type { Store } from '../domain/store.js';
 import { nextId } from '../domain/store.js';
-import type { Delivery, PersonId } from '../domain/types.js';
+import { ALL_CATEGORIES, type Delivery, type LedgerCategory, type PersonId } from '../domain/types.js';
+
+/**
+ * A protected value's `category` is a plain string; the ledger wants one of
+ * the known categories. An unrecognised one is recorded as `transparency`,
+ * which no grant covers, so an unclassifiable row is visible to the subject
+ * and to whoever caused it, and to nobody else. Fail closed, not open.
+ */
+function categoryOf(raw: string | undefined): LedgerCategory {
+    return (ALL_CATEGORIES as readonly string[]).includes(raw ?? '') ? (raw as LedgerCategory) : 'transparency';
+}
 
 export interface DeliveryReceipt {
     readonly deliveryId: string;
@@ -52,6 +62,7 @@ export function deliverPrivately(args: {
     }));
 
     const sealedRefs = (args.sealedRefs ?? []).map(s => ({ label: s.label, appPath: s.appPath }));
+    const sealedCategories = new Map((args.sealedRefs ?? []).map(s => [s.label, s.category]));
 
     const delivery: Delivery = {
         id: nextId('deliv'),
@@ -73,8 +84,14 @@ export function deliverPrivately(args: {
             actorId: recipientId,
             tool,
             channel: 'private-channel',
+            // The row carries the category of the fact that moved, so a later
+            // reader of the ledger is gated on the same grant that gated this
+            // delivery. Hardcoding one category here was half of F3.
+            category: categoryOf(f.value.category),
             what: f.value.label,
-            detail: `sent to ${recipient.displayName}'s linked device, not spoken`
+            // No display name: `actorId` says who, and whether a given reader
+            // may be told who is decided when the row is rendered.
+            detail: 'sent to a linked device, not spoken'
         });
     }
     for (const s of sealedRefs) {
@@ -83,6 +100,7 @@ export function deliverPrivately(args: {
             actorId: recipientId,
             tool,
             channel: 'sealed-refused',
+            category: categoryOf(sealedCategories.get(s.label)),
             what: s.label,
             detail: 'sealed: pointer to the app only, no value sent on any channel'
         });
@@ -103,6 +121,7 @@ export function recordDenial(args: {
     actorId: PersonId;
     subjectId: PersonId;
     tool: string;
+    category: LedgerCategory;
     what: string;
     reason: string;
 }): void {
@@ -111,6 +130,7 @@ export function recordDenial(args: {
         actorId: args.actorId,
         tool: args.tool,
         channel: 'denied',
+        category: args.category,
         what: args.what,
         detail: args.reason
     });

@@ -103,6 +103,21 @@ export interface ClinicalContext {
 /** A row in the disclosure ledger. Append-only. */
 export type LedgerChannel = 'spoken' | 'private-channel' | 'sealed-refused' | 'denied' | 'solo-window';
 
+/**
+ * What kind of fact a ledger row is about.
+ *
+ * Every row carries the category of the thing that actually moved, so
+ * `disclosure_ledger` can gate each row against the reader's own grant. It
+ * used to hardcode `medication` for every row it rendered, which meant an aide
+ * denied `diagnosis` was handed rows naming the diagnosis (F3).
+ *
+ * `transparency` is for rows about the mechanism rather than about a health
+ * fact — a solo window opening, a `who_can_see` answer. It is deliberately not
+ * a `GrantCategory`: no grant covers it, so those rows are visible only to the
+ * person who caused them and to the subject.
+ */
+export type LedgerCategory = GrantCategory | 'transparency';
+
 export interface LedgerEntry {
     readonly id: string;
     readonly at: Date;
@@ -110,9 +125,16 @@ export interface LedgerEntry {
     readonly actorId: PersonId;
     readonly tool: string;
     readonly channel: LedgerChannel;
+    /** The category of the fact that moved. Gates who may see this row. */
+    readonly category: LedgerCategory;
     /** What kind of fact moved. Never the fact. */
     readonly what: string;
-    /** Free-form, non-sensitive detail: "3 fields", "category not granted". */
+    /**
+     * Free-form, non-sensitive detail: "3 fields", "category not granted".
+     * Never names a person: the actor is `actorId`, and whether a reader may
+     * see that name is decided when the row is rendered, not when it is
+     * written.
+     */
     readonly detail: string;
 }
 

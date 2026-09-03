@@ -12,18 +12,28 @@ import { priv } from '../core/protected.js';
 import type { PrivateField, ToolResult } from '../core/result.js';
 import { clockTime, joinSpoken, say, type SpokenText } from '../core/spoken.js';
 import { addLocalDays, startOfLocalDay } from '../core/tz.js';
-import { NO_DEVICE_SESSION, canAsk, viewersOf } from '../domain/authz.js';
+import { NO_DEVICE_SESSION, canAsk, canReceivePrivate, viewersOf } from '../domain/authz.js';
 import { HOUSEHOLD_TZ } from '../domain/seed.js';
 import { SOLO_WINDOW_MS, activeSoloWindow, closeSoloWindow, openSoloWindow, secondsRemaining } from '../domain/solo.js';
 import type { Store } from '../domain/store.js';
-import type { LedgerChannel, PersonId } from '../domain/types.js';
-import { defineTool, SUBJECT_INPUT } from './kit.js';
+import type { LedgerChannel, LedgerEntry, PersonId } from '../domain/types.js';
+import { defineTool, resolveSubject, SUBJECT_INPUT } from './kit.js';
 
 function tzOf(store: Store, subjectId: PersonId): string {
     return store.person(subjectId)?.timeZone ?? HOUSEHOLD_TZ;
 }
+/**
+ * A household member's first name, or "they".
+ *
+ * The fallback is NOT the id. The id is whatever free text the caller sent as
+ * `subject`, and this string is interpolated into a sentence the assistant
+ * reads out and the tripwire scans. Echoing it back gave anyone with a token
+ * two primitives: put their own words in the speaker's mouth, and — since a
+ * taint marker is just a string — fire the project's own leak alarm on demand,
+ * which denied service on five tools and destroyed the signal (F5, F6).
+ */
 function nameOf(store: Store, id: PersonId): string {
-    return store.person(id)?.displayName ?? id;
+    return store.person(id)?.displayName ?? 'they';
 }
 
 
@@ -42,7 +52,7 @@ export const whoCanSee = defineTool({
     inputShape: { ...SUBJECT_INPUT },
     run: (args, ctx): ToolResult => {
         const { store, asker } = ctx;
-        const subjectId = args.subject ? String(args.subject).toLowerCase() : 'margaret';
+        const subjectId = resolveSubject(args.subject);
         const who = nameOf(store, subjectId);
 
         if (!canAsk(store, asker.personId, subjectId).allowed) {
@@ -97,19 +107,56 @@ const CHANNEL_PHRASE: Record<LedgerChannel, string> = {
     'solo-window': 'said out loud while you told me you were alone'
 };
 
+/**
+ * How many rows the card itemises. The spoken half reports the same number, so
+ * the two halves cannot disagree: it used to speak a count over every row while
+ * the card silently stopped at forty (F3d).
+ */
+const CARD_LIMIT = 40;
+
+/**
+ * May this reader be shown this row?
+ *
+ * Three rules, in order:
+ *   1. The subject sees everything about herself. That is the point of the
+ *      ledger and the reason it is append-only.
+ *   2. Otherwise you see your own disclosures and nobody else's. A ledger row
+ *      is a record of what Earshot told someone; handing the aide a log of
+ *      what the daughter looked at is itself a disclosure (F3c).
+ *   3. And only in categories your grant still covers, checked per row against
+ *      the row's own category. The tool used to gate on `canAsk` alone and
+ *      re-label every row `medication`, so a viewer denied diagnosis,
+ *      clinician and vitals was handed rows naming exactly those (F3).
+ */
+function maySeeRow(store: Store, viewerId: PersonId, subjectId: PersonId, row: LedgerEntry): boolean {
+    if (viewerId === subjectId) return true;
+    if (row.actorId !== viewerId) return false;
+    if (row.category === 'transparency') return true;
+    return canReceivePrivate(store, viewerId, subjectId, row.category).allowed;
+}
+
+/** Who did this, said in a way that discloses no more than the reader may know. */
+function actorPhrase(store: Store, row: LedgerEntry, viewerId: PersonId, isSubject: boolean): string {
+    if (row.actorId === viewerId) return 'you';
+    if (isSubject) return nameOf(store, row.actorId);
+    return 'another account with access';
+}
+
 export const disclosureLedger = defineTool({
     name: 'disclosure_ledger',
     title: 'What has been said, and what went quietly',
     description:
         'Report what Earshot has disclosed about this person and through which channel. The spoken half ' +
-        'is counts; the itemised list goes to the asker\'s linked device.',
+        "is counts; the itemised list goes to the asker's linked device. It reports the disclosures the " +
+        'asker is entitled to see: their own, in the categories their grant covers, and the whole record ' +
+        'when the asker is the person being cared for.',
     inputShape: {
         ...SUBJECT_INPUT,
         since: z.enum(['today', 'week']).optional().describe('"today" (default) or "week".')
     },
     run: (args, ctx): ToolResult => {
         const { store, asker } = ctx;
-        const subjectId = args.subject ? String(args.subject).toLowerCase() : 'margaret';
+        const subjectId = resolveSubject(args.subject);
         const tz = tzOf(store, subjectId);
         const who = nameOf(store, subjectId);
 
@@ -123,8 +170,14 @@ export const disclosureLedger = defineTool({
         const now = store.clock.now();
         const todayStart = startOfLocalDay(now, tz);
         const since = args.since === 'week' ? addLocalDays(todayStart, -6, tz) : todayStart;
-        const rows = store.ledgerFor(subjectId, since);
 
+        const isSubject = asker.personId === subjectId;
+        const visible = store.ledgerFor(subjectId, since).filter(r => maySeeRow(store, asker.personId, subjectId, r));
+        const shown = visible.slice(0, CARD_LIMIT);
+        const omitted = visible.length - shown.length;
+
+        // Counts are over exactly the rows on the card, so the number said out
+        // loud and the number itemised describe the same set.
         const counts: Record<LedgerChannel, number> = {
             spoken: 0,
             'private-channel': 0,
@@ -132,7 +185,7 @@ export const disclosureLedger = defineTool({
             denied: 0,
             'solo-window': 0
         };
-        for (const r of rows) counts[r.channel] += 1;
+        for (const r of shown) counts[r.channel] += 1;
 
         const period = args.since === 'week' ? 'this week' : 'today';
         const clauses: SpokenText[] = [];
@@ -144,19 +197,31 @@ export const disclosureLedger = defineTool({
         if (counts['solo-window'] > 0)
             clauses.push(say`${counts['solo-window']} said aloud while you'd told me you were alone`);
 
+        const nothing: SpokenText = isSubject
+            ? say`Nothing has been disclosed about ${who} ${period}.`
+            : say`Nothing has been disclosed to you about ${who} ${period}.`;
+
         const body: SpokenText =
             clauses.length === 0
-                ? say`Nothing has been disclosed about ${who} ${period}.`
+                ? nothing
                 : clauses.length === 1
                   ? say`${period === 'today' ? 'Today' : 'This week'}: ${clauses[0] as SpokenText}.`
                   : say`${period === 'today' ? 'Today' : 'This week'}: ${clauses.slice(0, -1).join(', ')}, and ${clauses[clauses.length - 1] as SpokenText}.`;
 
-        const fields: PrivateField[] = rows.slice(0, 40).map(r => ({
+        // Say the truncation rather than hiding it behind a bigger number.
+        const truncated: SpokenText | '' =
+            omitted > 0
+                ? say`That's the ${shown.length} most recent; ${omitted} older ${omitted === 1 ? 'one is' : 'ones are'} not on the card.`
+                : '';
+
+        const fields: PrivateField[] = shown.map(r => ({
             label: `${clockTime(r.at, tz)} · ${r.tool}`,
             value: priv(
-                `${r.what} — ${CHANNEL_PHRASE[r.channel]} (${nameOf(store, r.actorId)}). ${r.detail}`,
+                `${r.what} — ${CHANNEL_PHRASE[r.channel]} (${actorPhrase(store, r, asker.personId, isSubject)}). ${r.detail}`,
                 'ledger entry',
-                'medication'
+                // The row's own category, not a hardcoded one: this is what the
+                // next reader of this card will be gated on.
+                r.category
             )
         }));
 
@@ -172,11 +237,14 @@ export const disclosureLedger = defineTool({
                 : {};
 
         return {
-            spoken: joinSpoken(body, fields.length > 0 ? say`The itemised list is on your phone.` : say``),
+            spoken: joinSpoken(body, truncated, fields.length > 0 ? say`The itemised list is on your phone.` : say``),
             ...privately,
             data: {
                 period,
-                total: rows.length,
+                // What the card itemises, which is what the counts describe.
+                total: shown.length,
+                visibleToYou: visible.length,
+                omittedFromCard: omitted,
                 spoken: counts.spoken,
                 privateChannel: counts['private-channel'],
                 sealedRefused: counts['sealed-refused'],
@@ -205,7 +273,7 @@ export const openSoloWindowTool = defineTool({
     },
     run: (args, ctx): ToolResult => {
         const { store, asker } = ctx;
-        const subjectId = args.subject ? String(args.subject).toLowerCase() : 'margaret';
+        const subjectId = resolveSubject(args.subject);
         const tz = tzOf(store, subjectId);
         const who = nameOf(store, subjectId);
 
@@ -225,6 +293,7 @@ export const openSoloWindowTool = defineTool({
                 actorId: asker.personId,
                 tool: 'open_solo_window',
                 channel: 'denied',
+                category: 'transparency',
                 what: 'solo window',
                 detail: 'no device session id from the transport; cannot bind the window to one device'
             });
@@ -244,8 +313,9 @@ export const openSoloWindowTool = defineTool({
                 actorId: asker.personId,
                 tool: 'open_solo_window',
                 channel: 'solo-window',
+                category: 'transparency',
                 what: 'solo window closed early',
-                detail: `closed by ${nameOf(store, asker.personId)}`
+                detail: 'closed early by the account that opened it'
             });
             return { spoken: say`Closed. Back to normal.`, data: { open: false } };
         }

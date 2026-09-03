@@ -18,13 +18,23 @@ import { HOUSEHOLD_TZ } from '../domain/seed.js';
 import { activeSoloWindow, underSolo } from '../domain/solo.js';
 import { nextId, type Store } from '../domain/store.js';
 import type { GrantCategory, PersonId, SymptomReport } from '../domain/types.js';
-import { defineTool, SUBJECT_INPUT } from './kit.js';
+import { defineTool, resolveSubject, SUBJECT_INPUT } from './kit.js';
 
 function tzOf(store: Store, subjectId: PersonId): string {
     return store.person(subjectId)?.timeZone ?? HOUSEHOLD_TZ;
 }
+/**
+ * A household member's first name, or "they".
+ *
+ * The fallback is NOT the id. The id is whatever free text the caller sent as
+ * `subject`, and this string is interpolated into a sentence the assistant
+ * reads out and the tripwire scans. Echoing it back gave anyone with a token
+ * two primitives: put their own words in the speaker's mouth, and — since a
+ * taint marker is just a string — fire the project's own leak alarm on demand,
+ * which denied service on five tools and destroyed the signal (F5, F6).
+ */
 function nameOf(store: Store, id: PersonId): string {
-    return store.person(id)?.displayName ?? id;
+    return store.person(id)?.displayName ?? 'they';
 }
 function fmt(d: Date, timeZone: string): string {
     return new Intl.DateTimeFormat('en-US', {
@@ -63,7 +73,7 @@ export const reportSymptom = defineTool({
     },
     run: (args, ctx): ToolResult => {
         const { store, asker } = ctx;
-        const subjectId = args.subject ? String(args.subject).toLowerCase() : 'margaret';
+        const subjectId = resolveSubject(args.subject);
         const tz = tzOf(store, subjectId);
         const who = nameOf(store, subjectId);
 
@@ -73,6 +83,7 @@ export const reportSymptom = defineTool({
                 actorId: asker.personId,
                 tool: 'report_symptom',
                 channel: 'denied',
+                category: 'symptom',
                 what: 'symptom report',
                 detail: 'no grant on file'
             });
@@ -163,7 +174,7 @@ export const careSummary = defineTool({
     inputShape: { ...SUBJECT_INPUT },
     run: (args, ctx): ToolResult => {
         const { store, asker } = ctx;
-        const subjectId = args.subject ? String(args.subject).toLowerCase() : 'margaret';
+        const subjectId = resolveSubject(args.subject);
         const tz = tzOf(store, subjectId);
         const who = nameOf(store, subjectId);
 
@@ -174,6 +185,7 @@ export const careSummary = defineTool({
                 actorId: asker.personId,
                 tool: 'care_summary',
                 channel: 'denied',
+                category: 'medication',
                 what: 'care summary',
                 detail: grant ? 'grant covers spoken facts only' : 'no grant on file'
             });
@@ -253,7 +265,12 @@ export const careSummary = defineTool({
         if (solo) {
             // Even alone, sealed stays sealed. `underSolo` will not accept a
             // Protected<..., 'sealed'> — that is a compile error, not a policy.
-            const speak = underSolo({ store, window: solo, tool: 'care_summary' });
+            const speak = underSolo({
+                store,
+                window: solo,
+                tool: 'care_summary',
+                reader: { personId: asker.personId, deviceSessionId: asker.deviceSessionId }
+            });
             const lines: SpokenText[] = [];
             if (clinical && has('diagnosis')) lines.push(speak`Diagnosis: ${clinical.diagnosis}.`);
             if (clinical && has('vitals')) lines.push(speak`Latest vitals: ${clinical.lastVitals}.`);

@@ -72,7 +72,7 @@
     {
       "id": "09-cost-and-limits",
       "footage": "The measured latency table with the 500 ms budget line, then the test runner's 279 checks passed, then the README's 'What this does not do' section.",
-      "text": "Alexa+ gives an add-on five hundred milliseconds. The slowest tool here has a ninety-fifth percentile of eleven — measured on loopback, so the network isn't in that number, but the server's own work never crosses nine. Two hundred and seventy-nine checks pass, including an attack suite whose only job is to get a protected value spoken out loud.",
+      "text": "Alexa+ gives an add-on five hundred milliseconds. The slowest tool here has a ninety-fifth percentile of eleven — measured on loopback, so the network isn't in that number, but the server's own work never crosses nine. Three hundred and seven checks pass. Beside them sit thirty-eight findings from an attack suite whose only job was to make this thing lie. Twenty-five are closed. Thirteen are still failing, and the test runner prints them by name.",
       "rate": "-4%"
     },
     {
