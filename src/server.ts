@@ -22,11 +22,14 @@ import { pathToFileURL } from 'node:url';
 
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS } from '@modelcontextprotocol/sdk/types.js';
+import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
+import { LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS, type ServerNotification, type ServerRequest } from '@modelcontextprotocol/sdk/types.js';
 
 import { DEMO_INSTANT, FixedClock, resolveClock, type Clock } from './core/clock.js';
 import { assertNoTaint } from './core/protected.js';
 import { OAuthError, OAuthServer, readBody, renderConsentPage, sendJson, type HouseholdAccount } from './auth/oauth.js';
+import { getUiCapability, registerAppResource, registerAppTool } from '@modelcontextprotocol/ext-apps/server';
+import { CARD_CSP, CARD_HTML, CARD_MIME, CARD_URI, DELIVERING_TOOLS, UI_SERVER_CAPABILITY } from './protocol/apps.js';
 import { PkceError } from './auth/pkce.js';
 import { NO_DEVICE_SESSION, type Asker } from './domain/authz.js';
 import { DANA, MARGARET, SARAH, TOM, seedHousehold } from './domain/seed.js';
@@ -99,27 +102,56 @@ export async function startServer(opts: EarshotServerOptions = {}): Promise<Ears
         const mcp = new McpServer(
             { name: 'earshot', version: '0.1.0', title: 'Earshot — care coordination that respects the room' },
             {
-                capabilities: { tools: {}, resources: {}, logging: {} },
+                capabilities: {
+                    tools: {},
+                    resources: {},
+                    logging: {},
+                    // MCP Apps. The apps spec (2026-01-26) defines only the
+                    // CLIENT declaration and tells servers to check it, so
+                    // this is not required by that document; the generic
+                    // extension framework does have both sides advertise, and
+                    // the current core spec has servers advertise theirs.
+                    // Declaring it is forward-compatible and free.
+                    extensions: { ...UI_SERVER_CAPABILITY }
+                },
                 instructions: INSTRUCTIONS
             }
         );
 
         for (const tool of TOOLS) {
-            mcp.registerTool(
-                tool.name,
-                {
-                    title: tool.title,
-                    description: tool.description,
-                    inputSchema: tool.inputShape,
-                    outputSchema: EARSHOT_OUTPUT_SHAPE,
-                    annotations: {
-                        readOnlyHint: tool.readOnly,
-                        destructiveHint: false,
-                        idempotentHint: tool.readOnly,
-                        openWorldHint: false
-                    }
-                },
-                async (args: Record<string, unknown>, extra) => {
+            const config = {
+                title: tool.title,
+                description: tool.description,
+                inputSchema: tool.inputShape,
+                outputSchema: EARSHOT_OUTPUT_SHAPE,
+                annotations: {
+                    readOnlyHint: tool.readOnly,
+                    destructiveHint: false,
+                    idempotentHint: tool.readOnly,
+                    openWorldHint: false
+                }
+            };
+
+            // MCP Apps binds a tool to its view through `_meta.ui.resourceUri`
+            // on the TOOL DEFINITION, so a host can preload the view before
+            // the tool is ever called. `registerAppTool` is the extension's own
+            // helper: it writes that key and mirrors it into the deprecated
+            // flat `_meta["ui/resourceUri"]` for older hosts. We use it rather
+            // than hand-writing `_meta`, so the shape tracks the package.
+            //
+            // `visibility` is stated explicitly, and it is the interesting
+            // half. The extension offers `["app"]` to hide a tool from the
+            // model so a view can fetch privileged data the model never sees.
+            // Earshot declines that affordance: it is a host-side filter over
+            // `tools/list`, not a property of the data, and "the host promises
+            // not to tell the model" is the after-the-fact filtering this whole
+            // project argues against. Every Earshot tool is `["model"]` —
+            // visible to the assistant, because everything it returns is
+            // already safe for the assistant to have.
+            const handler = async (
+                args: Record<string, unknown>,
+                extra: RequestHandlerExtra<ServerRequest, ServerNotification>
+            ) => {
                     const t0 = process.hrtime.bigint();
                     const ms = (): number => Number(process.hrtime.bigint() - t0) / 1e6;
                     try {
@@ -167,6 +199,50 @@ export async function startServer(opts: EarshotServerOptions = {}): Promise<Ears
                             tool: tool.name,
                             serverLatencyMs: beforeEnvelope
                         });
+
+                        // MCP Apps, on the RESULT.
+                        //
+                        // The spec puts `_meta.ui.resourceUri` on the tool
+                        // definition. Amazon's Alexa+ docs put it on the tool
+                        // result — "Alexa+ renders your custom visuals for
+                        // your MCP App UI as long as you have `resourceUri`
+                        // defined in the tool response" — and their only
+                        // worked example is a `tools/call` result. Those are
+                        // two different places, so it goes in both. Unknown
+                        // `_meta` keys are ignored by clients that do not want
+                        // them, which is what `_meta` is for.
+                        //
+                        // It is emitted whether or not the client negotiated
+                        // the extension, and that is a deliberate departure
+                        // from "servers SHOULD check client capabilities".
+                        // Alexa+'s documented `initialize` declares
+                        // `capabilities: {roots: {listChanged: true}}` and
+                        // nothing else, so a server that gates on negotiation
+                        // would never offer Alexa+ a card while Amazon's own
+                        // docs say Alexa+ renders one. Gating would be
+                        // conformant and useless. Instead the negotiation
+                        // OUTCOME is reported on the wire, next to the
+                        // binding, so the contradiction is visible in the
+                        // bytes rather than argued about in a README.
+                        const hasDelivery =
+                            (wire.structuredContent as { privateDelivery?: unknown } | undefined)?.privateDelivery != null;
+                        // `getUiCapability` types its argument as the SDK's ClientCapabilities
+                        // widened with `extensions`; under exactOptionalPropertyTypes the
+                        // optional-property variance does not line up. The value is the
+                        // right shape, so the cast is about strictness, not correctness.
+                        const negotiated =
+                            getUiCapability(
+                                mcp.server.getClientCapabilities() as Parameters<typeof getUiCapability>[0]
+                            ) !== undefined;
+                        if (hasDelivery) {
+                            wire._meta = {
+                                ...(wire._meta ?? {}),
+                                ui: { resourceUri: CARD_URI },
+                                'ui/resourceUri': CARD_URI,
+                                'earshot/uiExtensionNegotiated': negotiated
+                            };
+                        }
+
                         latency.record(tool.name, ms());
                         return wire;
                     } catch (err) {
@@ -178,30 +254,48 @@ export async function startServer(opts: EarshotServerOptions = {}): Promise<Ears
                         console.error(`[earshot] tool ${tool.name} failed: ${msg}`);
                         return spokenError('Something went wrong on my side. Nothing was disclosed.', tool.name, elapsed);
                     }
-                }
-            );
+            };
+
+            if (DELIVERING_TOOLS.has(tool.name)) {
+                registerAppTool(
+                    mcp,
+                    tool.name,
+                    { ...config, _meta: { ui: { resourceUri: CARD_URI, visibility: ['model'] } } },
+                    handler as never
+                );
+            } else {
+                mcp.registerTool(tool.name, config, handler as never);
+            }
         }
 
-        // An MCP resource that renders the private card on the asker's own
-        // screen. It carries no payload: the HTML fetches /inbox with the
-        // viewer's own credentials, so the resource body itself is not a leak
-        // even if a host logs it.
-        mcp.registerResource(
-            'private-card',
-            new ResourceTemplate('ui://earshot/card/{deliveryId}', { list: undefined }),
+        // ---- MCP Apps: the `ui://` card ---------------------------------
+        //
+        // One static view, registered with the extension's own
+        // `registerAppResource`, which defaults the mime type to
+        // `text/html;profile=mcp-app`. Read the header of
+        // src/protocol/apps.ts before changing what it renders: a `ui://`
+        // resource is served by `resources/read` over the same authenticated
+        // session the model drives, so the card body is on the model's
+        // channel and holds a receipt rather than a payload.
+        //
+        // The per-call data does not come from here. The host hands the tool
+        // result to the running view over `ui/notifications/tool-result`, and
+        // that result is a receipt by construction — see
+        // src/protocol/envelope.ts.
+        registerAppResource(
+            mcp,
+            'Earshot private card',
+            CARD_URI,
             {
                 title: 'Earshot private card',
-                description: 'Renders a private delivery on the asker\'s own device. Contains no payload itself.',
-                mimeType: 'text/html'
+                description:
+                    'Shows that private detail was delivered out-of-band, and why this panel is not one of the places it went. Carries no payload.',
+                mimeType: CARD_MIME,
+                _meta: { ui: { csp: CARD_CSP } }
             },
-            async (uri, variables) => ({
-                contents: [
-                    {
-                        uri: uri.href,
-                        mimeType: 'text/html',
-                        text: renderCardShell(String(variables['deliveryId'] ?? ''), publicUrl)
-                    }
-                ]
+            async uri => ({
+                contents: [{ uri: uri.href, mimeType: CARD_MIME, text: CARD_HTML }],
+                _meta: { ui: { csp: CARD_CSP } }
             })
         );
 
@@ -451,38 +545,6 @@ function corsHeaders(): Record<string, string> {
         'access-control-expose-headers': 'mcp-session-id, www-authenticate',
         'access-control-allow-methods': 'GET, POST, DELETE, OPTIONS'
     };
-}
-
-function renderCardShell(deliveryId: string, base: string): string {
-    const id = deliveryId.replace(/[^A-Za-z0-9_-]/g, '');
-    return `<!doctype html><meta charset="utf-8">
-<title>Earshot — private</title>
-<style>body{font:15px/1.5 system-ui,sans-serif;margin:0;padding:1rem;color:#1c1917}
-h1{font-size:1rem;margin:0 0 .75rem;color:#57534e;font-weight:600}
-dl{margin:0}dt{font-size:.8rem;color:#78716c;margin-top:.75rem}dd{margin:.15rem 0 0;font-weight:500}
-.note{margin-top:1rem;font-size:.8rem;color:#78716c;border-top:1px solid #e7e5e4;padding-top:.75rem}</style>
-<h1>Not said out loud</h1><dl id="f"></dl>
-<p class="note">This card is fetched with your own credentials from ${escapeAttr(base)}/inbox.
-The assistant never received this content.</p>
-<script>
-const id=${JSON.stringify(id)};
-async function load(){
-  const t=window.EARSHOT_TOKEN||new URLSearchParams(location.search).get('token');
-  if(!t){document.getElementById('f').textContent='Sign in to view.';return;}
-  const r=await fetch(${JSON.stringify(base)}+'/inbox?peek=1',{headers:{authorization:'Bearer '+t}});
-  const j=await r.json();
-  const d=(j.deliveries||[]).find(x=>x.id===id)||j.deliveries?.[0];
-  const dl=document.getElementById('f');
-  if(!d){dl.textContent='Nothing to show.';return;}
-  for(const f of d.fields){const dt=document.createElement('dt');dt.textContent=f.label;
-    const dd=document.createElement('dd');dd.textContent=f.value;dl.append(dt,dd);}
-}
-load();
-</script>`;
-}
-
-function escapeAttr(s: string): string {
-    return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 }
 
 // --- entry point -----------------------------------------------------------

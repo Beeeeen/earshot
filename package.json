@@ -1,38 +1,40 @@
 {
-  "name": "earshot",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "description": "An Alexa+ MCP add-on that treats the room as an untrusted channel.",
-  "license": "MIT",
-  "engines": {
-    "node": ">=20"
-  },
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsx watch src/server.ts",
-    "start": "node dist/server.js",
-    "test": "node --import tsx --test test/*.test.ts",
-    "test:attack": "node --import tsx --test test/attack/*.test.ts",
-    "test:latency": "node --import tsx --test test/latency/*.test.ts",
-    "test:all": "node scripts/test-all.mjs",
-    "selftest": "node dist/selftest/run.js",
-    "demo": "npm run build && node dist/demo.js",
-    "demo:serve": "npm run build && node dist/server.js --demo",
-    "voice": "node scripts/make-voice.mjs",
-    "assemble": "node scripts/assemble.mjs",
-    "captions": "node scripts/make-captions.mjs",
-    "thumbnail": "node scripts/make-thumbnail.mjs",
-    "record": "node demo/tools/record.mjs"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.20.0",
-    "zod": "^3.25.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.10.0",
-    "puppeteer-core": "^25.10.0",
-    "tsx": "^4.19.0",
-    "typescript": "^5.7.0"
-  }
+    "name": "earshot",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "description": "An Alexa+ MCP add-on that treats the room as an untrusted channel.",
+    "license": "MIT",
+    "engines": {
+        "node": ">=20"
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "dev": "tsx watch src/server.ts",
+        "start": "node dist/server.js",
+        "test": "node --import tsx --test test/*.test.ts",
+        "test:attack": "node --import tsx --test test/attack/*.test.ts",
+        "test:latency": "node --import tsx --test test/latency/*.test.ts",
+        "test:all": "node scripts/test-all.mjs",
+        "selftest": "node dist/selftest/run.js",
+        "demo": "npm run build && node dist/demo.js",
+        "demo:serve": "npm run build && node dist/server.js --demo",
+        "voice": "node scripts/make-voice.mjs",
+        "assemble": "node scripts/assemble.mjs",
+        "captions": "node scripts/make-captions.mjs",
+        "thumbnail": "node scripts/make-thumbnail.mjs",
+        "record": "node demo/tools/record.mjs",
+        "verify:card": "npm run build && node demo/tools/verify-card.mjs"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/ext-apps": "^1.7.5",
+        "@modelcontextprotocol/sdk": "^1.20.0",
+        "zod": "^3.25.0"
+    },
+    "devDependencies": {
+        "@types/node": "^22.10.0",
+        "puppeteer-core": "^25.10.0",
+        "tsx": "^4.19.0",
+        "typescript": "^5.7.0"
+    }
 }

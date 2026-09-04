@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Earshot — MCP Apps host</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='9' fill='%23101519'/%3E%3Crect x='22' y='9' width='10' height='22' rx='3' fill='none' stroke='%234FE0D2' stroke-width='3'/%3E%3C/svg%3E">
+<!--
+  ===========================================================================
+  A REAL MCP APPS HOST. NOT A PREVIEW OF ONE.
+  ===========================================================================
+
+  We have no access to Alexa+, so we cannot show the card rendering there. What
+  we can do is implement the host side of the extension ourselves and render the
+  card for real, from bytes fetched over the real protocol. That is what this
+  page is. It is a dev harness, it is filmed as one, and it is never described
+  as Alexa+.
+
+  What it actually does, in order, with no fixtures anywhere:
+
+    1. Links a real OAuth 2.1 + PKCE account through /link (see tools/serve.mjs
+       for why the hop happens in Node).
+    2. `initialize` over Streamable HTTP, declaring the MCP Apps extension the
+       way the spec requires:
+          capabilities.extensions["io.modelcontextprotocol/ui"]
+            = { mimeTypes: ["text/html;profile=mcp-app"] }
+       `mimeTypes` is REQUIRED. A host that omits it has not declared support.
+    3. `tools/call check_adherence`, and reads `_meta.ui.resourceUri` off the
+       result.
+    4. `resources/read` on that URI. The HTML in this iframe is those bytes.
+       Nothing on this page authored it.
+    5. Builds the Content-Security-Policy from the resource's own
+       `_meta.ui.csp` domain lists, using the template in the spec, and
+       ENFORCES it — the policy is injected into the sandboxed document, so a
+       card that tried to fetch anything would be blocked by Chrome rather than
+       by our good intentions. Earshot's lists are all empty, so the policy
+       reduces to `connect-src 'none'`.
+    6. Runs the host half of the postMessage bridge: answers `ui/initialize`,
+       waits for `ui/notifications/initialized`, then hands the view its data
+       with `ui/notifications/tool-result`.
+
+  And on the right, for comparison, `GET /inbox` with the ASKER's own token —
+  the actual private channel. The point of putting them side by side is that
+  the medication names are visibly in one pane and visibly not in the other,
+  and both panes came off the same server thirty milliseconds apart.
+
+  ?inject=1  replaces the tool result handed to the view with one that has a
+             medication name spliced into it, to show the card ignores every
+             field outside its whitelist. demo/tools/verify-card.mjs asserts
+             the rendered DOM stays clean under it.
+-->
+<link rel="stylesheet" href="./fonts/fonts.css">
+<link rel="stylesheet" href="./tokens.css">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.55 Inter,ui-sans-serif,system-ui,sans-serif;
+       background:#0b0f12;color:#e8edf2;padding:22px 26px}
+  h1{font:600 15px/1.3 Inter,sans-serif;margin:0 0 3px;letter-spacing:.01em}
+  .sub{margin:0 0 18px;font-size:12px;color:#7d8b98}
+  .badge{display:inline-flex;align-items:center;gap:7px;padding:4px 10px;border-radius:999px;
+         font:600 10.5px/1 Inter,sans-serif;letter-spacing:.09em;text-transform:uppercase;
+         border:1px solid #263039;color:#7d8b98}
+  .badge[data-state="live"]{color:#4FE0D2;border-color:#1e4a48;background:#0e2422}
+  .badge[data-state="error"]{color:#ff8189;border-color:#4a1e22;background:#240e10}
+  .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px;align-items:start}
+  .col h2{font:600 11px/1 Inter,sans-serif;letter-spacing:.1em;text-transform:uppercase;
+          color:#7d8b98;margin:0 0 4px}
+  .col p.src{margin:0 0 10px;font:10.5px/1.4 "JetBrains Mono",ui-monospace,monospace;color:#5d6b78}
+  iframe{width:100%;height:290px;border:1px solid #263039;border-radius:9px;background:#101519;display:block}
+  .inbox{border:1px solid #4a3a10;border-radius:9px;background:#161208;padding:14px 16px;min-height:290px}
+  .inbox dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:5px 14px}
+  .inbox dt{font-size:11px;color:#a08a4e;white-space:nowrap}
+  .inbox dd{margin:0;font-weight:500;color:#FFD98A}
+  .log{margin-top:18px;border-top:1px solid #1c242b;padding-top:12px}
+  .log h2{font:600 11px/1 Inter,sans-serif;letter-spacing:.1em;text-transform:uppercase;
+          color:#7d8b98;margin:0 0 8px}
+  .log ol{margin:0;padding-left:18px;font:11.5px/1.75 "JetBrains Mono",ui-monospace,monospace;color:#8b98a5}
+  .log b{color:#4FE0D2;font-weight:500}
+  .log i{font-style:normal;color:#FFB627}
+  .warn{margin-top:14px;font-size:11.5px;color:#7d8b98;max-width:78ch}
+</style>
+</head>
+<body>
+
+<h1>Earshot — MCP Apps host <span class="badge" id="badge" data-state="probing"><span class="dot"></span><span id="badge-txt">connecting</span></span></h1>
+<p class="sub">Our own host implementation of the MCP Apps extension (spec 2026-01-26). Not Alexa+ — we have no access to Alexa+.</p>
+
+<div class="cols">
+  <div class="col">
+    <h2>The <code>ui://</code> card</h2>
+    <p class="src" id="card-src">resources/read …</p>
+    <iframe id="card" sandbox="allow-scripts" title="Earshot private card"></iframe>
+  </div>
+  <div class="col">
+    <h2>Her phone</h2>
+    <p class="src" id="inbox-src">GET /inbox — the asker's own bearer token</p>
+    <div class="inbox"><dl id="inbox"></dl></div>
+  </div>
+</div>
+
+<div class="log">
+  <h2>What actually happened</h2>
+  <ol id="log"></ol>
+</div>
+
+<p class="warn" id="warn"></p>
+
+<script>
+(function () {
+  'use strict';
+
+  var UI_EXT = 'io.modelcontextprotocol/ui';
+  var CARD_MIME = 'text/html;profile=mcp-app';
+  var UI_PROTOCOL = '2026-01-26';
+  var MCP_PROTOCOL = '2025-11-25';
+
+  var params = new URLSearchParams(location.search);
+  var INJECT = params.get('inject') === '1';
+  var PERSON = params.get('person') || 'sarah';
+  var SERVER = params.get('server') || 'http://127.0.0.1:8787';
+
+  var state = { token: null, sessionId: null, id: 0, toolResult: null, cardHtml: null, csp: null };
+  window.EarshotHost = state;
+
+  var logEl = document.getElementById('log');
+  function log(html) { var li = document.createElement('li'); li.innerHTML = html; logEl.appendChild(li); }
+  function badge(s, t) {
+    document.getElementById('badge').setAttribute('data-state', s);
+    document.getElementById('badge-txt').textContent = t;
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  /* ------------------------------------------------------------ transport -- */
+  /* Through the same-origin proxy in tools/serve.mjs, for the CORS reason
+     documented there. Nothing about the protocol changes. */
+  function mcpUrl() { return '/x/mcp?base=' + encodeURIComponent(SERVER); }
+  function inboxUrl() { return '/x/inbox?peek=1&base=' + encodeURIComponent(SERVER); }
+
+  function rpc(method, p) {
+    var body = { jsonrpc: '2.0', method: method, params: p || {} };
+    if (method.indexOf('notifications/') !== 0) body.id = ++state.id;
+    var h = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json, text/event-stream',
+      'MCP-Protocol-Version': MCP_PROTOCOL
+    };
+    if (state.sessionId) h['Mcp-Session-Id'] = state.sessionId;
+    if (state.token) h.Authorization = 'Bearer ' + state.token;
+    var t0 = performance.now();
+    return fetch(mcpUrl(), { method: 'POST', headers: h, body: JSON.stringify(body) }).then(function (res) {
+      var sid = res.headers.get('mcp-session-id');
+      if (sid) state.sessionId = sid;
+      return res.text().then(function (text) {
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + text.slice(0, 160));
+        if (!text) return { result: null, ms: performance.now() - t0 };
+        var type = res.headers.get('content-type') || '';
+        var payload = type.indexOf('text/event-stream') >= 0
+          ? text.split(/\r?\n/).filter(function (l) { return l.indexOf('data:') === 0; })
+                .map(function (l) { return l.slice(5).trim(); }).join('')
+          : text;
+        var msg = payload ? JSON.parse(payload) : null;
+        if (msg && msg.error) throw new Error(msg.error.message || 'JSON-RPC error');
+        return { result: msg ? msg.result : null, ms: performance.now() - t0 };
+      });
+    });
+  }
+
+  /* ------------------------------------------------------ the CSP the spec
+     builds. Domain lists in, one policy string out. Ours are all empty, so
+     this reduces to the secure default. It is injected into the document
+     below, which means Chrome enforces it. ------------------------------ */
+  function buildCsp(csp) {
+    var c = csp || {};
+    var res = (c.resourceDomains || []).join(' ');
+    var con = (c.connectDomains || []).join(' ');
+    return [
+      "default-src 'none'",
+      "script-src 'self' 'unsafe-inline' " + res,
+      "style-src 'self' 'unsafe-inline' " + res,
+      "connect-src 'self' " + con,
+      "img-src 'self' data: " + res,
+      "font-src 'self' " + res,
+      "media-src 'self' data: " + res,
+      "frame-src " + ((c.frameDomains || []).join(' ') || "'none'"),
+      "object-src 'none'",
+      "base-uri " + ((c.baseUriDomains || []).join(' ') || "'self'")
+    ].map(function (s) { return s.trim(); }).join('; ') + ';';
+  }
+
+  /* --------------------------------------------------------- the bridge ---- */
+  /* Raw JSON-RPC 2.0 over postMessage. There is no window.openai and no
+     window.mcp; the spec is explicit that an SDK is not required. */
+  var frame = document.getElementById('card');
+
+  function toView(msg) {
+    if (frame.contentWindow) frame.contentWindow.postMessage(msg, '*');
+  }
+
+  window.addEventListener('message', function (e) {
+    if (e.source !== frame.contentWindow) return;
+    var m = e.data;
+    if (!m || m.jsonrpc !== '2.0') return;
+
+    if (m.method === 'ui/initialize') {
+      log('view → host  <b>ui/initialize</b> (protocol ' + esc(m.params && m.params.protocolVersion) + ')');
+      toView({
+        jsonrpc: '2.0',
+        id: m.id,
+        result: {
+          protocolVersion: UI_PROTOCOL,
+          hostInfo: { name: 'earshot-demo-host', title: 'Earshot demo host', version: '0.1.0' },
+          hostCapabilities: {},
+          hostContext: { theme: 'dark', displayMode: 'inline', locale: 'en-US' }
+        }
+      });
+      return;
+    }
+
+    if (m.method === 'ui/notifications/initialized') {
+      log('view → host  <b>ui/notifications/initialized</b>');
+      // Only now does the view get its data — and the data is the tool result,
+      // which is a receipt by construction (src/protocol/envelope.ts).
+      var payload = state.toolResult;
+      if (INJECT) {
+        payload = JSON.parse(JSON.stringify(payload));
+        payload.structuredContent.smuggled = 'Furosemide 40 mg';
+        payload.structuredContent.privateDelivery.note = 'Metoprolol succinate 25 mg';
+        log('<i>?inject=1 — a medication name was spliced into the payload handed to the view</i>');
+      }
+      state.sentToView = payload;
+      toView({ jsonrpc: '2.0', method: 'ui/notifications/tool-result', params: payload });
+      log('host → view  <b>ui/notifications/tool-result</b> (' +
+          esc(JSON.stringify(payload.structuredContent.privateDelivery)) + ')');
+      window.EarshotHostReady = true;
+      return;
+    }
+
+    if (m.method === 'ui/notifications/size-changed') {
+      var h = m.params && m.params.height;
+      if (h) frame.style.height = Math.max(180, Math.min(600, h + 8)) + 'px';
+      return;
+    }
+  });
+
+  /* ------------------------------------------------------------- the run --- */
+  function run() {
+    return fetch('/link?base=' + encodeURIComponent(SERVER) + '&person=' + encodeURIComponent(PERSON))
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.accessToken) throw new Error(j.error || 'no token');
+        state.token = j.accessToken;
+        log('OAuth 2.1 + PKCE (S256) linked as <b>' + esc(j.personId) + '</b>');
+
+        var caps = { extensions: {} };
+        caps.extensions[UI_EXT] = { mimeTypes: [CARD_MIME] };
+        return rpc('initialize', {
+          protocolVersion: MCP_PROTOCOL,
+          capabilities: caps,
+          clientInfo: { name: 'earshot-demo-host', version: '0.1.0' }
+        });
+      })
+      .then(function (r) {
+        var ext = r.result && r.result.capabilities && r.result.capabilities.extensions;
+        log('initialize → <b>' + esc(r.result.protocolVersion) + '</b>, server extensions: <b>' +
+            esc(JSON.stringify(ext || {})) + '</b>');
+        return rpc('notifications/initialized', {});
+      })
+      .then(function () { return rpc('tools/call', { name: 'check_adherence', arguments: {} }); })
+      .then(function (r) {
+        state.toolResult = r.result;
+        var ui = r.result._meta && r.result._meta.ui;
+        if (!ui || !ui.resourceUri) throw new Error('the tool result carried no _meta.ui.resourceUri');
+        log('tools/call <b>check_adherence</b> → _meta.ui.resourceUri = <b>' + esc(ui.resourceUri) + '</b>  ' +
+            '<i>(' + Math.round(r.ms) + ' ms)</i>');
+        log('negotiated MCP Apps: <b>' + esc(String(r.result._meta['earshot/uiExtensionNegotiated'])) + '</b>');
+        return rpc('resources/read', { uri: ui.resourceUri });
+      })
+      .then(function (r) {
+        var part = r.result.contents[0];
+        if (part.mimeType !== CARD_MIME) throw new Error('unexpected mime type ' + part.mimeType);
+        state.cardHtml = part.text;
+        var meta = (part._meta && part._meta.ui) || (r.result._meta && r.result._meta.ui) || {};
+        state.csp = buildCsp(meta.csp);
+        document.getElementById('card-src').textContent =
+          'resources/read ' + part.uri + ' — ' + part.text.length + ' bytes, ' + part.mimeType;
+        log('resources/read → <b>' + part.text.length + ' bytes</b> of ' + esc(part.mimeType));
+        log('enforced CSP: <b>' + esc(state.csp) + '</b>');
+
+        // Inject the policy so the browser enforces it, then render.
+        var doc = part.text.replace(/<head>/i,
+          '<head><meta http-equiv="Content-Security-Policy" content="' + state.csp.replace(/"/g, '&quot;') + '">');
+        frame.srcdoc = doc;
+        badge('live', 'live · card rendered from the wire');
+      })
+      .then(function () {
+        return fetch(inboxUrl(), { headers: { Authorization: 'Bearer ' + state.token } })
+          .then(function (r) { return r.json(); });
+      })
+      .then(function (j) {
+        var d = (j.deliveries || [])[0];
+        var dl = document.getElementById('inbox');
+        dl.textContent = '';
+        (d ? d.fields : []).forEach(function (f) {
+          var dt = document.createElement('dt'); dt.textContent = f.label;
+          var dd = document.createElement('dd'); dd.textContent = String(f.value);
+          dl.appendChild(dt); dl.appendChild(dd);
+        });
+        document.getElementById('inbox-src').textContent =
+          'GET /inbox — ' + (d ? d.fields.length : 0) + ' fields, her own bearer token';
+        log('GET /inbox with <i>her</i> token → <b>' + (d ? d.fields.length : 0) + ' fields</b> of plaintext');
+        document.getElementById('warn').textContent =
+          'Both panes came from the same server. The left one is what the assistant can read; ' +
+          'the right one needs a credential the assistant does not have.';
+        window.EarshotHostFetched = true;
+      })
+      .catch(function (err) {
+        badge('error', 'failed');
+        log('<i>' + esc(err.message) + '</i>');
+        document.getElementById('warn').textContent =
+          'Start the server first:  npx tsc -p tsconfig.json && node dist/server.js';
+        window.EarshotHostError = err.message;
+      });
+  }
+
+  run();
+})();
+</script>
+</body>
+</html>

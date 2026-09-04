@@ -9,6 +9,16 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { LATEST_PROTOCOL_VERSION } from '@modelcontextprotocol/sdk/types.js';
 
 import { challengeFor, createVerifier } from '../auth/pkce.js';
+import { UI_CLIENT_CAPABILITY, UI_EXTENSION } from '../protocol/apps.js';
+
+/**
+ * What a client that supports MCP Apps declares in `initialize`:
+ * `capabilities.extensions["io.modelcontextprotocol/ui"].mimeTypes`, with
+ * `mimeTypes` REQUIRED by the extension spec.
+ */
+export const UI_CLIENT_CAPABILITIES: Record<string, unknown> = {
+    extensions: { [UI_EXTENSION]: { ...UI_CLIENT_CAPABILITY } }
+};
 
 export const REDIRECT_URI = 'http://127.0.0.1:59999/callback';
 
@@ -111,13 +121,24 @@ export interface McpSession {
     close(): Promise<void>;
 }
 
-export async function connectMcp(baseUrl: string, accessToken: string): Promise<McpSession> {
+export async function connectMcp(
+    baseUrl: string,
+    accessToken: string,
+    /**
+     * Client capabilities to declare in `initialize`. Defaults to none, which
+     * is what most of the suite wants. Pass `UI_CLIENT_CAPABILITIES` to be a
+     * client that declares the MCP Apps extension — the card binding is only
+     * sent to a client that has, because the extension is negotiated
+     * bilaterally.
+     */
+    capabilities: Record<string, unknown> = {}
+): Promise<McpSession> {
     const transport = new StreamableHTTPClientTransport(new URL(`${baseUrl}/mcp`), {
         requestInit: { headers: { authorization: `Bearer ${accessToken}` } }
     });
     const client = new Client(
         { name: 'earshot-selftest', version: '0.1.0' },
-        { capabilities: {} }
+        { capabilities }
     );
     // Same `exactOptionalPropertyTypes` mismatch as on the server side: the
     // SDK's Transport interface declares `sessionId?: string` while the

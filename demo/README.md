@@ -99,8 +99,55 @@ That function is the whole contract surface and it is about thirty lines.
 | `index.html` `styles.css` `tokens.css` | the page. Tokens are gated by `tools/check-contrast.py` |
 | `scenario.js` | the beat script, the protected-value list, and the fixtures |
 | `adapter.js` | **the only file that knows where a result comes from** |
+| `card-host.html` | our own MCP Apps host, for rendering the `ui://` card |
 | `app.js` | the engine, the invariant guard, the verifier |
 | `fonts/` | Inter + JetBrains Mono, vendored so a recording never depends on wifi |
+
+## The MCP Apps host — `card-host.html`
+
+A second page, separate from the filmed simulator, because it answers a
+different question: **does the `ui://` card actually render?**
+
+We have no access to Alexa+, so we cannot show it rendering there. What we can
+do is implement the host side of the MCP Apps extension ourselves and render the
+card for real. That is all this page is, it says so on itself, and it is never
+presented as Alexa+.
+
+```
+node dist/server.js                # the real server, :8787
+node demo/tools/serve.mjs          # then open http://localhost:5174/card-host.html
+```
+
+It links a real OAuth account, `initialize`s declaring
+`capabilities.extensions["io.modelcontextprotocol/ui"] = {mimeTypes:
+["text/html;profile=mcp-app"]}` (`mimeTypes` is REQUIRED — a host that omits it
+has not declared support), calls `check_adherence`, reads `_meta.ui.resourceUri`
+off the result, fetches the view with `resources/read`, builds the CSP from the
+resource's own `_meta.ui.csp` using the template in the spec, injects it so
+Chrome enforces it, and then runs the host half of the postMessage bridge:
+answer `ui/initialize`, wait for `ui/notifications/initialized`, send
+`ui/notifications/tool-result`.
+
+Beside it, `GET /inbox` with the asker's own token. The two panes are the whole
+argument: the medication names are visibly in one and visibly not in the other,
+and both came off the same server milliseconds apart.
+
+| query param | |
+|---|---|
+| `?server=URL` | which Earshot to talk to (default `http://127.0.0.1:8787`) |
+| `?person=dana` | link as somebody else |
+| `?inject=1` | splice a medication name into the payload handed to the view, to show the card ignores every field outside its whitelist |
+
+**Why the card holds a receipt and not the payload.** A `ui://` resource is
+served by `resources/read`, an ordinary JSON-RPC method on the same
+authenticated `/mcp` session the model drives — `src/selftest/apps.check.ts`
+drives exactly that call and gets the bytes back. So the card body is on the
+model's channel. And the iframe holds no credential: the spec's default CSP is
+`connect-src 'none'`, the frame is an opaque origin, and `McpUiHostContext`
+carries no auth field of any kind. There is no path from the server to the view
+that does not cross the model's context, so the card shows what the MCP response
+already contained — a count, a recipient, a delivery id — and says why it cannot
+show more.
 
 ## Checks
 
@@ -108,7 +155,19 @@ That function is the whole contract surface and it is about thirty lines.
 python demo/tools/check-contrast.py    # palette gate: WCAG, CIE L*, CIEDE2000 + dichromacy
 node demo/tools/smoke.mjs              # renders every beat, re-checks the invariant from outside the page
 node demo/tools/verify-live.mjs        # drives the demo against a real MCP server, including a leaking one
+node demo/tools/verify-card.mjs        # renders the ui:// card in Chrome and checks it against the wire
 ```
+
+`verify-card.mjs` (`npm run verify:card`) starts a real server and the demo
+server, opens `card-host.html` in headless Chrome, waits for the card to paint,
+and then reads the DOM **inside the sandboxed frame**: the number on the card
+must equal `privateDelivery.fieldCount` from the tool result, the recipient and
+delivery id must match, and no string in the server's own `DEMO_SECRETS` may
+appear anywhere in the frame. It runs a second time with `?inject=1`, where a
+medication name is deliberately spliced into the payload the host hands the
+view, and asserts the rendered DOM stays clean — the card reads five named
+fields and ignores everything else, and that run is what proves it. 15 checks,
+and it needs Chrome, which is why it is not in `npm run test:all`.
 
 With no arguments, `verify-live.mjs` runs `tools/mock-mcp.mjs` on :8791 — a
 test double that mirrors the real envelope and serves its own `/inbox`, but

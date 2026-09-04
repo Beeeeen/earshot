@@ -84,7 +84,7 @@ model is a client of `/mcp` and holds no credentials for `/inbox`, so no prompt
 can extract what was never put in its context.
 
 The demo proves this on the wire: it greps the raw `tools/call` response bytes
-for 38 seeded secrets — **964 bytes, 0 found** — including under an explicit
+for 38 seeded secrets — **1,082 bytes, 0 found** — including under an explicit
 prompt injection in `_meta`, where the spoken sentence comes back byte-identical
 to the un-attacked call.
 
@@ -107,11 +107,12 @@ byte-identical once timings and the ephemeral port are normalised.
 
 | | |
 |---|---|
-| Checks passed | **307**, 0 failed — plus 38 findings tracked separately, 13 still failing |
+| Checks passed | **322**, 0 failed — plus 38 findings tracked separately, 13 still failing |
 | MCP spec negotiated on the wire | **2025-11-25** (`@modelcontextprotocol/sdk@1.30.0`) |
 | Transport | Streamable HTTP, JSON and SSE modes |
-| Worst tool p95, client round trip | **11-14 ms** (loopback, varies by run) |
+| Worst tool p95, client round trip | **under 20 ms** on loopback, every run |
 | Worst server-side handler time, any tool | **under 10 ms** |
+| MCP Apps card | 15 checks, rendered in real Chrome from bytes fetched over MCP |
 | Platform budget | 500 ms — **0 calls over budget** in ~900 |
 
 Loopback round trips do not include Amazon's network. The server-side numbers
@@ -146,9 +147,22 @@ and a window would unlock every device at once.
   heard it. Earshot controls everything downstream of that, and nothing upstream.
 - **It is not a compliance product.** Not HIPAA, not audited, not a medical device.
 - **The solo window trusts you.** It cannot verify that you are actually alone.
-- **`ui://` MCP Apps rendering is untested.** The resource is registered and
-  readable, but we have no access to Alexa+ to confirm it renders. It is not on
-  the demo path.
+- **The MCP Apps card deliberately shows you nothing.** It renders a receipt —
+  *"7 details went to Sarah's own device"*, seven masked rows, and why it is
+  blank. That is not a limitation we are dressing up. `resources/read` is an
+  ordinary method on the same authenticated session the model drives: we proved
+  it by reading the card's HTML back from a client calling itself
+  `a-client-that-is-not-a-renderer`. Anything printed on that card is one
+  `resources/read` from the model's context, which makes it *worse* than
+  `structuredContent`, not better.
+- **The card has never rendered on Alexa+, and probably cannot today.** It renders
+  in our own MCP Apps host under an enforced CSP, proven by 15 checks in real
+  Chrome. But Amazon's documented `initialize` declares no `extensions` key, so
+  `getUiCapability` returns `undefined` and a conformant server has nothing to
+  offer them. We send the binding anyway and report
+  `earshot/uiExtensionNegotiated: false` on the wire, so the contradiction is in
+  the bytes rather than in this paragraph. See
+  [`docs/friction-log.md`](docs/friction-log.md).
 
 ## Known findings
 

@@ -9,6 +9,7 @@
 import { allResults, type CheckResult } from './harness.js';
 import { latencyReport } from './latency.check.js';
 
+import * as appsChecks from './apps.check.js';
 import * as domainChecks from './domain.check.js';
 import * as e2eChecks from './e2e.check.js';
 import * as latencyChecks from './latency.check.js';
@@ -28,6 +29,7 @@ const SUITES: { name: string; run: () => Promise<void> }[] = [
     { name: 'domain', run: domainChecks.run },
     { name: 'tools', run: toolChecks.run },
     { name: 'end to end', run: e2eChecks.run },
+    { name: 'mcp apps', run: appsChecks.run },
     { name: 'latency', run: latencyChecks.run }
 ];
 
