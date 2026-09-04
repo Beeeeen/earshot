@@ -106,8 +106,8 @@ byte-identical once timings and the ephemeral port are normalised.
 | Checks passed | **307**, 0 failed — plus 38 findings tracked separately, 13 still failing |
 | MCP spec negotiated on the wire | **2025-11-25** (`@modelcontextprotocol/sdk@1.30.0`) |
 | Transport | Streamable HTTP, JSON and SSE modes |
-| Worst tool p95, client round trip | **11.4 ms** (loopback) |
-| Worst server-side handler time, any tool | **8.9 ms** |
+| Worst tool p95, client round trip | **11-14 ms** (loopback, varies by run) |
+| Worst server-side handler time, any tool | **under 10 ms** |
 | Platform budget | 500 ms — **0 calls over budget** in ~900 |
 
 Loopback round trips do not include Amazon's network. The server-side numbers

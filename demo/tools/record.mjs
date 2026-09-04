@@ -24,7 +24,29 @@ import { promisify } from 'node:util';
 
 const run = promisify(execFile);
 import { join } from 'node:path';
+import { spawn } from 'node:child_process';
 import { chromePath, puppeteer, serveDemo, openDemo, ROOT } from './lib/browser.mjs';
+
+/* Start our own MCP server so every recording gets a FRESH store.
+   `report_symptom` appends to store.symptoms and the store outlives a page
+   reset, so recording twice against one long-lived server puts the same
+   symptom on the card five times -- which is what shipped in the first cut and
+   made the frame that lingers longest look like fabricated data. A recording
+   must not inherit state from an earlier take. */
+async function freshServer(port) {
+  const child = spawn(process.execPath, ['dist/server.js', '--demo'], {
+    cwd: ROOT, env: { ...process.env, PORT: String(port) }, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const url = await new Promise((resolve, reject) => {
+    const bail = setTimeout(() => reject(new Error('MCP server did not start in 20s')), 20000);
+    child.stdout.on('data', (b) => {
+      const m = String(b).match(/listening on (http:\/\/\S+)/);
+      if (m) { clearTimeout(bail); resolve(m[1]); }
+    });
+    child.on('exit', (c) => { clearTimeout(bail); reject(new Error('MCP server exited ' + c)); });
+  });
+  return { url, stop: () => child.kill() };
+}
 
 const argv = process.argv.slice(2);
 const only = argv.includes('--beat') ? argv[argv.indexOf('--beat') + 1] : null;
@@ -67,6 +89,9 @@ const secondsFor = (id) => {
 const sleep = (s) => new Promise((r) => setTimeout(r, Math.round(s * 1000)));
 
 await mkdir(OUT, { recursive: true });
+const mcp = scripted ? null : await freshServer(8791);
+if (mcp) console.log(`  fresh MCP server at ${mcp.url} -- no state from an earlier take
+`);
 const server = await serveDemo(5211);
 const pptr = await puppeteer();
 const browser = await pptr.launch({
@@ -86,7 +111,7 @@ let mode = null;
 try {
   for (const shot of shots) {
     const secs = secondsFor(shot.id);
-    const query = `${scripted ? 'mode=scripted&' : ''}speed=1&still=${shot.goto}`;
+    const query = `${scripted ? 'mode=scripted&' : `server=${encodeURIComponent(mcp.url + '/mcp')}&`}speed=1&still=${shot.goto}`;
     const { page, errors } = await openDemo(browser, server.url, query);
 
     if (mode === null) {
@@ -168,6 +193,7 @@ try {
 } finally {
   await browser.close();
   await server.close?.();
+  mcp?.stop();
 }
 
 const total = shots.reduce((a, s) => a + secondsFor(s.id) + s.hold, 0);

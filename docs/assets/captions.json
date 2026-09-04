@@ -11,7 +11,7 @@
     },
     {
       "file": "still-3.png",
-      "caption": "The same answer in full, on the asker’s own device, over the MCP Apps card."
+      "caption": "The same answer in full, on the asker's own device — fetched from /inbox with her own token, never carried in the MCP response."
     },
     {
       "file": "still-4.png",
@@ -19,7 +19,7 @@
     },
     {
       "file": "still-5.png",
-      "caption": "Four spoken answers, three channel shifts, two refusals, one sealed — and nothing protected said aloud."
+      "caption": "The ledger, and the counter it is checked against: every protected value the room could have heard, and none that it did."
     }
   ]
 }

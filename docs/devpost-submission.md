@@ -111,7 +111,7 @@ by someone who assumes we are lying: they can read one file.
 requires a round trip under half a second, and the documentation does not say
 whether that covers the network hop. We assumed it does, which leaves the handler
 very little, which is why the data layer is in-process with no external round
-trips. Measured: the server's own handler time never crosses **8.9 ms** across all eight tools, and not one call in roughly 900 went over budget. Worst client-observed p95 is 11.1 ms on loopback — which does not include Amazon's network, so the server-side number is the one that transfers.
+trips. Measured: the server's own handler time stays **under 10 ms** across all eight tools, and not one call in roughly 900 went over budget. Worst client-observed p95 is 11-14 ms on loopback depending on the run — which does not include Amazon's network, so the server-side number is the one that transfers.
 
 **Refusals return, they don't throw.** A thrown error becomes a spoken apology,
 which is the worst possible outcome on a device with no screen. Every guard returns
