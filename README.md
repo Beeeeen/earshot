@@ -14,10 +14,14 @@ whoever was in the room.
 Earshot does the third thing. It answers the question, and moves the part that
 cannot be said to a channel the room cannot hear.
 
-> **This is not access control.** Access control decides *whether* you get an
-> answer. Earshot decides *which channel carries which part of one answer.* The
-> unit of disclosure is the sentence, not the request. Nothing is withheld from
-> the person who asked — it is withheld from the room.
+> **Margaret is 82, the medication is hers, and she is sitting in the room while
+> her daughter asks about it.** Every rule Earshot follows was set by Margaret:
+> Sarah may hear everything, Dana the aide may know what to give and when but not
+> why or who prescribed it, the neighbour has no row at all. And Margaret gets the
+> receipt — she can read what was said about her, to whom, including the requests
+> that were refused on her behalf while she sat there.
+>
+> That is the part of this that is actually unclaimed. See [Prior art](#prior-art).
 
 ```
 Sarah: "Alexa, did Mum take her pills today?"
@@ -183,6 +187,46 @@ only contains the assertions the code passes is not evidence of anything. Two
 describe real, narrower gaps we chose to state instead of fix: `care_summary`
 speaks an item count that is a function of the protected set, and a `toJSON`
 returning marker-free plaintext is invisible to a marker scan by construction.
+
+## Prior art
+
+Splitting one spoken answer into a public half and a private half routed to the
+asker's phone **is not a new idea, and we are not claiming it as one.** It is
+claimed in at least three granted patents:
+
+| Patent | Assignee | Priority |
+|---|---|---|
+| [US 10,803,859 B1](https://patents.google.com/patent/US10803859B1/en) — Speech processing for public devices | **Amazon** | 2017-09-05 |
+| [US 11,494,502 B2](https://patents.google.com/patent/US11494502B2/en) — Privacy awareness for personal assistant communications | Microsoft | 2018-10-25 |
+| [US 11,158,312 B2](https://patents.google.com/patent/US11158312B2/en) — Contextually appropriate responses | IBM | 2018-09-25 |
+
+Amazon's worked example splits *"Thank you for checking in to the Downtown Plaza.
+Ms. Smith, your room number is 1312 and your room code is 24601"* — public half
+spoken, room code to her phone. Microsoft's claim 1 recites redacting
+confidential information and indicating that the rest went over a second channel,
+and its own worked example is *"check your phone for details about your 2 o'clock
+appointment."* Adjacent art covers the medication case specifically: Walgreens'
+[US 11,762,965 B2](https://patents.google.com/patent/US11762965B2/en) substitutes
+"your heart medication" for the drug name when it may be overheard.
+
+**What none of them do is decide whose policy governs.** Every one of them
+protects the *asker* or the *account holder* — Amazon protects the hotel guest,
+Microsoft protects the user from bystanders. In care, the person the data is
+about is usually neither. She is a third party to her own medical information,
+and she is frequently the other person in the room.
+
+In Earshot every grant carries `grantedBy`, and in the seeded household every
+grant is `grantedBy: MARGARET` — the subject, not the account holder, not the
+caregiver who set up the device. The subject also receives the complete ledger
+about herself, including the requests refused on her behalf. That is the claim
+worth defending, and it is a much narrower one than "we invented channel
+routing."
+
+The other honest thing to say: **nobody has shipped any of this.** Apple's
+HomePod speaks personal content aloud and sends a notification as a receipt.
+Google's Voice Match refuses outright. Amazon's own caregiving product, Alexa
+Together, ran for three and a half years and was discontinued in May 2025 without
+ever addressing the shared room.
 
 ## Licence
 

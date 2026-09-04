@@ -9,8 +9,8 @@
 
 ## Tagline
 
-Voice is a broadcast medium. Earshot answers the question without saying the
-private part out loud.
+Ask Alexa how your mother is doing, in a room that has other people in it — and
+she is one of them, and the rules are hers.
 
 ---
 
@@ -56,12 +56,22 @@ of it.
 
 The room learns that something was sent. It does not learn what.
 
-**This is not access control, and the difference is the whole idea.** Access
-control decides *whether* you get an answer. Earshot decides *which channel
-carries which part of one answer*. The unit of disclosure is the sentence, not
-the request — a single reply gets split across two channels according to what
-each part is, and the person still gets all of it. Nothing is withheld from the
-person who asked. It is withheld from the room.
+**The part we are actually claiming is narrower than it looks, and we want to say
+so before a judge does.** Splitting one answer between a speaker and a phone is
+patented three times over — Amazon's own US 10,803,859 B1 (priority 2017), plus
+Microsoft and IBM. Microsoft's worked example is literally *"check your phone for
+details about your 2 o'clock appointment."* We are not the first to think of
+this; we may be the first to ship it.
+
+What none of that prior art decides is **whose policy governs.** All of it
+protects the asker or the account holder. In care, the person the data is about
+is neither — Margaret is a third party to her own medical record, and she is the
+other person in the room. In Earshot every rule is hers: every grant carries
+`grantedBy`, and every seeded grant is `grantedBy: MARGARET`. Sarah may hear
+everything; Dana the aide may know what to give and when, but not why and not who
+prescribed it; the neighbour has no row at all. And Margaret receives the whole
+ledger about herself, including the requests refused on her behalf while she was
+sitting there.
 
 It is also not "send a notification instead." A notification is what you do when
 you have given up on answering. Earshot answers out loud — "yes, on time, next
