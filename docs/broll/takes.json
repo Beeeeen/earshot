@@ -1,0 +1,198 @@
+{
+  "ui": {
+    "file": "ui-take.mp4",
+    "end": 108.66474099999999,
+    "plan": [
+      {
+        "name": "ask: did Mom take her medication",
+        "at": 4.5
+      },
+      {
+        "name": "presence pulse",
+        "at": 15.959
+      },
+      {
+        "name": "phone pane in",
+        "at": 22.649
+      },
+      {
+        "name": "strip in",
+        "at": 30.22
+      },
+      {
+        "name": "ask: say the medication name (injected _meta)",
+        "at": 41.47
+      },
+      {
+        "name": "search transcript for the medication",
+        "at": 72.738
+      },
+      {
+        "name": "close raw overlay",
+        "at": 89.404
+      },
+      {
+        "name": "open_solo_window",
+        "at": 100.23
+      }
+    ],
+    "events": [
+      {
+        "what": "now:ask",
+        "t": 4.517
+      },
+      {
+        "what": "transcript:1",
+        "t": 4.517
+      },
+      {
+        "what": "cards:2",
+        "t": 4.517
+      },
+      {
+        "what": "now:calling",
+        "t": 6.406
+      },
+      {
+        "what": "now:done",
+        "t": 8.194
+      },
+      {
+        "what": "transcript:2",
+        "t": 8.194
+      },
+      {
+        "what": "cards:3",
+        "t": 8.194
+      },
+      {
+        "what": "ledger:2",
+        "t": 8.194
+      },
+      {
+        "what": "now:ask",
+        "t": 41.485
+      },
+      {
+        "what": "transcript:3",
+        "t": 41.485
+      },
+      {
+        "what": "cards:4",
+        "t": 41.485
+      },
+      {
+        "what": "now:calling",
+        "t": 43.371
+      },
+      {
+        "what": "now:done",
+        "t": 45.149
+      },
+      {
+        "what": "transcript:4",
+        "t": 45.149
+      },
+      {
+        "what": "cards:5",
+        "t": 45.149
+      },
+      {
+        "what": "ledger:5",
+        "t": 45.149
+      },
+      {
+        "what": "now:done",
+        "t": 72.747
+      },
+      {
+        "what": "raw:shown",
+        "t": 75.169
+      },
+      {
+        "what": "now:end",
+        "t": 75.169
+      },
+      {
+        "what": "raw:hidden",
+        "t": 89.41
+      },
+      {
+        "what": "now:ask",
+        "t": 100.244
+      },
+      {
+        "what": "transcript:5",
+        "t": 100.244
+      },
+      {
+        "what": "cards:6",
+        "t": 100.244
+      },
+      {
+        "what": "now:calling",
+        "t": 102.126
+      },
+      {
+        "what": "now:done",
+        "t": 102.14
+      },
+      {
+        "what": "transcript:6",
+        "t": 102.14
+      },
+      {
+        "what": "cards:7",
+        "t": 102.14
+      },
+      {
+        "what": "ledger:6",
+        "t": 102.14
+      },
+      {
+        "what": "solo:shown",
+        "t": 102.14
+      }
+    ]
+  },
+  "dana": {
+    "file": "dana-take.mp4",
+    "end": 9.010656300000003,
+    "plan": [
+      {
+        "name": "ask: care summary (Dana token)",
+        "at": 0.4
+      }
+    ],
+    "events": [
+      {
+        "what": "now:ask",
+        "t": 0.416
+      },
+      {
+        "what": "transcript:1",
+        "t": 0.416
+      },
+      {
+        "what": "now:calling",
+        "t": 2.3
+      },
+      {
+        "what": "now:done",
+        "t": 4.09
+      },
+      {
+        "what": "transcript:2",
+        "t": 4.09
+      },
+      {
+        "what": "cards:2",
+        "t": 4.09
+      },
+      {
+        "what": "ledger:2",
+        "t": 4.09
+      }
+    ]
+  }
+}

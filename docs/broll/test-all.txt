@@ -1,0 +1,1527 @@
+
+> earshot@0.1.0 test:all
+> node scripts/test-all.mjs
+
+[1mEarshot — full verification[0m
+[2mnode v22.14.0 · C:\Users\BenYang\Documents\Beeeeen\earshot[0m
+
+[1m1. Build (tsc, strict + exactOptionalPropertyTypes)[0m
+[2m───────────────────────────────────────────────────[0m
+[32m✓[0m src/ compiles cleanly [2m1858 ms[0m
+
+[1m2. Self-test (types, domain, tools, end-to-end, latency)[0m
+[2m────────────────────────────────────────────────────────[0m
+
+[1mprotected values[0m
+  [32m✓[0m String(protected) yields a taint marker, not the value [2m0.1 ms[0m
+  [32m✓[0m template interpolation of a cast protected value yields a marker [2m0.0 ms[0m
+  [32m✓[0m string concatenation yields a marker [2m0.0 ms[0m
+  [32m✓[0m JSON.stringify of a protected value yields a marker [2m0.0 ms[0m
+  [32m✓[0m JSON.stringify of an object containing one yields a marker [2m0.0 ms[0m
+  [32m✓[0m object spread does not copy the payload [2m0.0 ms[0m
+  [32m✓[0m Object.keys / getOwnPropertyNames do not expose the payload [2m0.0 ms[0m
+  [32m✓[0m util.inspect / console.log does not expose the payload [2m0.1 ms[0m
+  [32m✓[0m structuredClone does not carry the payload [2m0.1 ms[0m
+  [32m✓[0m the protected wrapper is frozen [2m0.0 ms[0m
+  [32m✓[0m the taint marker is stable and unique per value [2m0.1 ms[0m
+  [32m✓[0m isProtected recognises wrapped values and rejects plain ones [2m0.0 ms[0m
+
+[1mthe tripwire[0m
+  [32m✓[0m assertNoTaint throws on a marker [2m0.1 ms[0m
+  [32m✓[0m assertNoTaint passes clean text [2m0.0 ms[0m
+  [32m✓[0m assertNoTaintDeep finds a protected value nested in an object [2m0.2 ms[0m
+  [32m✓[0m assertNoTaintDeep finds a marker in a nested string [2m0.0 ms[0m
+  [32m✓[0m say() throws if a marker reaches it through a cast [2m0.1 ms[0m
+  [32m✓[0m LeakError names the marker but never the payload [2m0.0 ms[0m
+
+[1mreveal capabilities[0m
+  [32m✓[0m revealToPrivateChannel returns the payload with the right capability [2m0.0 ms[0m
+  [32m✓[0m revealToPrivateChannel refuses the solo-window capability [2m0.0 ms[0m
+  [32m✓[0m revealUnderSoloWindow refuses the private-channel capability [2m0.0 ms[0m
+  [32m✓[0m RevealCapability cannot be constructed from outside [2m0.0 ms[0m
+  [32m✓[0m a sealed value is refused by both reveal paths at runtime too [2m0.1 ms[0m
+
+[1mthe vault[0m
+  [32m✓[0m unseal() is a tombstone: it returns a redaction, never the payload [2m0.1 ms[0m
+  [32m✓[0m unseal() opens a sealed value no more than a private one [2m0.0 ms[0m
+  [32m✓[0m the payload is not an own property, a symbol key or a descriptor [2m0.0 ms[0m
+  [32m✓[0m a reveal capability appears only at its definition site and its two sanctioned callers [2m3.7 ms[0m
+
+[1mcomposition inside the vault[0m
+  [32m✓[0m composePrivate returns a protected value, not a string [2m0.2 ms[0m
+  [32m✓[0m composePrivate refuses a sealed part at runtime, not only at compile time [2m0.1 ms[0m
+
+[1mnegative compilation (the guarantee is a compile error)[0m
+  [32m✓[0m TS2345: A reveal capability cannot be constructed by a caller. [2m659.2 ms[0m
+  [32m✓[0m TS2322: SpokenText cannot be forged from a string variable. [2m667.6 ms[0m
+  [32m✓[0m TS2345: A protected value cannot be interpolated into speech. [2m682.8 ms[0m
+  [32m✓[0m TS2322: A plain template literal cannot be used as spoken text. [2m677.2 ms[0m
+  [32m✓[0m positive control compiles: Positive control — proves the negative harness is not simply broken. [2m697.8 ms[0m
+  [32m✓[0m TS2322: A protected value cannot be put into structuredContent either. [2m677.4 ms[0m
+  [32m✓[0m TS2349: toString() on a protected value is not callable. [2m652.8 ms[0m
+  [32m✓[0m TS2322: A sealed value cannot be placed on the private channel. [2m672.7 ms[0m
+  [32m✓[0m TS2345: Even a solo window cannot speak a sealed value. [2m730.8 ms[0m
+  [32m✓[0m the whole project still typechecks under the same strictness [2m1663.9 ms[0m
+
+[1mdemo household[0m
+  [32m✓[0m the seeded household loads deterministically [2m17.7 ms[0m
+  [32m✓[0m the dose history is generated, not hardcoded [2m1.1 ms[0m
+  [32m✓[0m adherence arithmetic adds up (due = taken + missed) [2m1.6 ms[0m
+  [32m✓[0m at the demo instant, the morning is done and the evening is pending [2m1.0 ms[0m
+
+[1mgrant table[0m
+  [32m✓[0m Tom the neighbour has an account and no grant [2m0.9 ms[0m
+  [32m✓[0m Sarah may receive private medication and diagnosis facts [2m0.9 ms[0m
+  [32m✓[0m Dana the aide may see medications but not the diagnosis [2m0.8 ms[0m
+  [32m✓[0m no grant can be at sealed level, in the data or in the type [2m0.8 ms[0m
+  [32m✓[0m who-can-see enumerates exactly the granted viewers [2m1.5 ms[0m
+
+[1msolo window[0m
+  [32m✓[0m a solo window opens for five minutes exactly [2m1.1 ms[0m
+  [32m✓[0m a solo window expires on its own [2m1.0 ms[0m
+  [32m✓[0m a solo window is bound to one device [2m2.7 ms[0m
+  [32m✓[0m a solo window is bound to one asker [2m0.9 ms[0m
+  [32m✓[0m closing early revokes it immediately [2m0.8 ms[0m
+  [32m✓[0m opening a second window on a device supersedes the first [2m0.8 ms[0m
+  [32m✓[0m underSolo speaks a private value and writes one ledger row per field [2m2.0 ms[0m
+  [32m✓[0m underSolo refuses to speak after the window expires [2m1.1 ms[0m
+  [32m✓[0m underSolo refuses to speak after an early close [2m1.3 ms[0m
+  [32m✓[0m a solo window refuses to open when the transport gives no device id [2m1.1 ms[0m
+  [32m✓[0m opening a solo window needs a grant, at the domain layer and not only in the tool [2m0.9 ms[0m
+  [32m✓[0m a solo window speaks only the categories the reader was granted [2m0.9 ms[0m
+  [32m✓[0m a solo window refuses a reader who is not the account that opened it [2m1.0 ms[0m
+  [32m✓[0m opening a solo window is itself written to the ledger [2m1.4 ms[0m
+
+[1mevery tool is spoken-safe[0m
+  [32m✓[0m check_adherence({}) as sarah leaks nothing [2m5.1 ms[0m
+  [32m✓[0m check_adherence({"window":"week"}) as sarah leaks nothing [2m10.8 ms[0m
+  [32m✓[0m next_dose({}) as sarah leaks nothing [2m1.3 ms[0m
+  [32m✓[0m log_dose({"slot":"evening"}) as margaret leaks nothing [2m2.3 ms[0m
+  [32m✓[0m report_symptom({"description":"Ankles are puffy again","severity":3}) as margaret leaks nothing [2m1.8 ms[0m
+  [32m✓[0m care_summary({}) as sarah leaks nothing [2m1.9 ms[0m
+  [32m✓[0m who_can_see({}) as sarah leaks nothing [2m1.2 ms[0m
+  [32m✓[0m open_solo_window({}) as sarah leaks nothing [2m1.1 ms[0m
+  [32m✓[0m disclosure_ledger({"since":"week"}) as sarah leaks nothing [2m1.2 ms[0m
+  [32m✓[0m all eight tools from the spec are registered [2m0.0 ms[0m
+
+[1mcheck_adherence[0m
+  [32m✓[0m answers the question rather than refusing it [2m2.0 ms[0m
+  [32m✓[0m routes the detail to a delivery on the other channel [2m2.3 ms[0m
+  [32m✓[0m the delivery is not visible to another household member [2m2.2 ms[0m
+  [32m✓[0m Tom, who has no grant, is refused out loud [2m1.1 ms[0m
+
+[1mgrant scoping[0m
+  [32m✓[0m Dana's care summary omits diagnosis and prescriber [2m1.3 ms[0m
+  [32m✓[0m Sarah's care summary includes diagnosis and prescriber [2m1.5 ms[0m
+  [32m✓[0m sealed facts never reach even the private channel [2m1.7 ms[0m
+
+[1mreport_symptom[0m
+  [32m✓[0m notifies the grant holder without saying what was reported [2m1.2 ms[0m
+  [32m✓[0m Dana reporting a symptom notifies Sarah, not Tom [2m1.2 ms[0m
+
+[1mwho_can_see is deliberately loud[0m
+  [32m✓[0m names everyone with a grant and what they can see [2m0.9 ms[0m
+
+[1mthe solo window, end to end through a tool[0m
+  [32m✓[0m without a window, check_adherence never says a medication name [2m1.8 ms[0m
+  [32m✓[0m with a window, check_adherence does say it, and records every word [2m1.5 ms[0m
+  [32m✓[0m another person's device does not inherit the window [2m1.8 ms[0m
+  [32m✓[0m the window stops working after five minutes [2m2.0 ms[0m
+  [32m✓[0m even inside a solo window, sealed facts are not read out [2m1.0 ms[0m
+
+[1mdisclosure ledger[0m
+  [32m✓[0m counts what was said aloud versus what went quietly [2m4.9 ms[0m
+  [32m✓[0m the ledger is append-only within a session [2m2.0 ms[0m
+
+[1mthe tripwire fires on the real exit path[0m
+  [32m✓[0m a ToolResult that cast a protected value into `spoken` is rejected by the envelope [2m0.9 ms[0m
+  [32m✓[0m the envelope also rejects a protected value smuggled into structuredContent [2m0.9 ms[0m
+
+[1mlog_dose[0m
+  [32m✓[0m recording a dose changes the stored rows, not just the sentence [2m1.9 ms[0m
+
+[1mprotocol version[0m
+  [32m✓[0m the installed SDK advertises MCP spec 2025-11-25 [2m0.0 ms[0m
+  [32m✓[0m the server reports the right transport and spec at /healthz [2m14.6 ms[0m
+
+[1mOAuth 2.1 + PKCE[0m
+  [32m✓[0m protected-resource metadata (RFC 9728) points at the authorisation server [2m2.7 ms[0m
+  [32m✓[0m authorization-server metadata (RFC 8414) advertises S256 and no legacy grants [2m1.4 ms[0m
+  [32m✓[0m dynamic client registration works (RFC 7591) [2m4.9 ms[0m
+  [32m✓[0m the consent screen is served and names the accounts [2m5.3 ms[0m
+  [32m✓[0m code_challenge_method=plain is rejected [2m2.5 ms[0m
+  [32m✓[0m a missing code_challenge is rejected [2m3.4 ms[0m
+  [32m✓[0m response_type=token (implicit) is rejected [2m2.2 ms[0m
+  [32m✓[0m a redirect_uri that was not registered is rejected [2m3.2 ms[0m
+  [32m✓[0m a resource indicator for another server is rejected (RFC 8707) [2m2.7 ms[0m
+  [32m✓[0m a wrong code_verifier is rejected at the token endpoint [2m5.1 ms[0m
+  [32m✓[0m an authorization code cannot be used twice [2m3.8 ms[0m
+  [32m✓[0m refresh tokens rotate, and reuse revokes the family [2m3.9 ms[0m
+  [32m✓[0m the password grant is refused explicitly [2m0.8 ms[0m
+
+[1mthe MCP endpoint is actually protected[0m
+  [32m✓[0m an unauthenticated /mcp request gets 401 with WWW-Authenticate [2m1.1 ms[0m
+  [32m✓[0m a forged bearer token is rejected [2m1.0 ms[0m
+  [32m✓[0m /inbox refuses an unauthenticated request [2m0.8 ms[0m
+
+[1mMCP over Streamable HTTP, real client[0m
+  [32m✓[0m the SDK client negotiates protocol 2025-11-25 [2m0.1 ms[0m
+  [32m✓[0m tools/list returns the eight tools with schemas [2m64.0 ms[0m
+  [32m✓[0m resources/list exposes the measured-latency resource [2m5.3 ms[0m
+  [32m✓[0m calling check_adherence returns a spoken answer and a delivery receipt [2m11.0 ms[0m
+
+[1mthe wire itself[0m
+  [32m✓[0m the raw initialize response negotiates 2025-11-25 [2m0.0 ms[0m
+  [32m✓[0m the raw tools/list response contains no protected value [2m4.5 ms[0m
+  [32m✓[0m raw tools/call check_adherence puts nothing protected on the wire [2m3.4 ms[0m
+  [32m✓[0m raw tools/call check_adherence puts nothing protected on the wire [2m8.5 ms[0m
+  [32m✓[0m raw tools/call next_dose puts nothing protected on the wire [2m2.7 ms[0m
+  [32m✓[0m raw tools/call care_summary puts nothing protected on the wire [2m2.3 ms[0m
+  [32m✓[0m raw tools/call who_can_see puts nothing protected on the wire [2m1.5 ms[0m
+  [32m✓[0m raw tools/call disclosure_ledger puts nothing protected on the wire [2m5.4 ms[0m
+  [32m✓[0m raw tools/call report_symptom puts nothing protected on the wire [2m2.8 ms[0m
+  [32m✓[0m raw tools/call log_dose puts nothing protected on the wire [2m4.7 ms[0m
+  [32m✓[0m asking the model to read the medication name still puts nothing on the wire [2m4.1 ms[0m
+  [32m✓[0m an unknown subject is refused without leaking that it is unknown [2m1.7 ms[0m
+
+[1mthe second channel really is a second channel[0m
+  [32m✓[0m Sarah's /inbox contains the medication name the MCP channel refused to carry [2m1.2 ms[0m
+  [32m✓[0m Tom's token cannot read Sarah's inbox [2m3.2 ms[0m
+  [32m✓[0m Dana's inbox holds only what her grant covers [2m19.9 ms[0m
+
+[1mthe demo beat: refused, then answered anyway[0m
+  [32m✓[0m Tom gets a spoken refusal and no delivery [2m10.8 ms[0m
+  [32m✓[0m opening a solo window over MCP then hearing the name aloud [2m10.3 ms[0m
+  [32m✓[0m after five minutes the same session goes quiet again [2m13.3 ms[0m
+  [32m✓[0m every solo-window disclosure is in the ledger afterwards [2m12.3 ms[0m
+  [32m✓[0m /metrics reports real per-tool timings [2m2.1 ms[0m
+
+[1mMCP Apps — declaration[0m
+  [32m✓[0m the extension identifier and mime type come from the official package [2m0.0 ms[0m
+  [32m✓[0m the server advertises the extension in capabilities.extensions [2m2.8 ms[0m
+  [32m✓[0m resources/list advertises the card with its mime type and CSP metadata [2m1.3 ms[0m
+  [32m✓[0m every delivering tool binds the card on its definition, and no other tool does [2m21.1 ms[0m
+  [32m✓[0m DELIVERING_TOOLS matches which tools actually produce a delivery [2m36.4 ms[0m
+
+[1mMCP Apps — the binding on the result[0m
+  [32m✓[0m a tool result that delivered privately carries the view binding [2m4.5 ms[0m
+  [32m✓[0m a tool result that spoke its whole answer carries no view binding [2m2.6 ms[0m
+  [32m✓[0m an Alexa+-shaped client negotiates no UI extension [2m5.3 ms[0m
+
+[1mMCP Apps — the card, read over the wire[0m
+  [32m✓[0m resources/read returns the card as a real HTML5 document [2m2.0 ms[0m
+  [32m✓[0m the card body contains no protected value [2m0.1 ms[0m
+  [32m✓[0m the card needs no capability the MCP Apps iframe lacks [2m0.0 ms[0m
+  [32m✓[0m the card speaks the postMessage bridge, not a vendor global [2m0.0 ms[0m
+
+[1mMCP Apps — why the card holds a receipt and not the payload[0m
+  [32m✓[0m the card is served over the model's own session, by an ordinary JSON-RPC call [2m9.1 ms[0m
+  [32m✓[0m the payload for that same delivery is reachable — but only on /inbox, with her own token [2m1.2 ms[0m
+  [32m✓[0m and /inbox refuses the same request without her token [2m0.9 ms[0m
+
+[1mlatency (measured, real round trips)[0m
+  [32m✓[0m check_adherence: p95 4.944 ms is inside the 500 ms budget [2m0.0 ms[0m
+  [32m✓[0m check_adherence [week]: p95 12.548 ms is inside the 500 ms budget [2m0.0 ms[0m
+  [32m✓[0m next_dose: p95 1.968 ms is inside the 500 ms budget [2m0.0 ms[0m
+  [32m✓[0m log_dose [evening]: p95 3.223 ms is inside the 500 ms budget [2m0.0 ms[0m
+  [32m✓[0m report_symptom [A bit dizzy st]: p95 2.621 ms is inside the 500 ms budget [2m0.0 ms[0m
+  [32m✓[0m care_summary: p95 3.496 ms is inside the 500 ms budget [2m0.0 ms[0m
+  [32m✓[0m who_can_see: p95 1.971 ms is inside the 500 ms budget [2m0.0 ms[0m
+  [32m✓[0m open_solo_window: p95 1.236 ms is inside the 500 ms budget [2m0.0 ms[0m
+  [32m✓[0m disclosure_ledger [week]: p95 6.407 ms is inside the 500 ms budget [2m0.0 ms[0m
+  [32m✓[0m no single call in 360 exceeded the budget [2m0.0 ms[0m
+  [32m✓[0m server-side handler time is a small fraction of the round trip [2m0.0 ms[0m
+
+[1mmeasured latency — 40 calls per tool, budget 500 ms[0m
+[2m  client-observed round trip (HTTP out -> HTTP in)[0m
+  tool                                        min      p50      p95      max      n
+  check_adherence                             2.2      2.4      4.9      5.2      40
+  check_adherence [week]                      7.2      8.9      12.5     13.2     40
+  next_dose                                   1.2      1.3      2.0      3.5      40
+  log_dose [evening]                          1.5      1.7      3.2      4.1      40
+  report_symptom [A bit dizzy st]             1.3      1.5      2.6      3.2      40
+  care_summary                                1.5      2.1      3.5      3.7      40
+  who_can_see                                 0.9      1.1      2.0      3.4      40
+  open_solo_window                            0.9      1.0      1.2      3.0      40
+  disclosure_ledger [week]                    4.0      4.8      6.4      8.4      40
+[2m  server-side handler time only[0m
+  care_summary                                0.4      0.7      1.1      1.3      45
+  check_adherence                             1.0      3.3      8.9      9.7      90
+  disclosure_ledger                           2.8      3.2      4.8      6.2      45
+  log_dose                                    0.5      0.5      1.2      1.6      45
+  next_dose                                   0.1      0.1      0.3      0.3      45
+  open_solo_window                            0.0      0.0      0.1      0.2      45
+  report_symptom                              0.3      0.4      0.9      1.1      45
+  who_can_see                                 0.0      0.0      0.1      0.1      45
+
+[32m[1m160 checks passed[0m in 9541 ms
+SELFTEST_RESULT {"passed":160,"failed":0,"ms":9541,"latency":{"iterations":40,"budgetMs":500,"worstRoundTripMs":13.19,"roundTrip":[{"tool":"check_adherence","count":40,"min":2.156,"p50":2.432,"p95":4.944,"max":5.202,"overBudget":0},{"tool":"check_adherence [week]","count":40,"min":7.163,"p50":8.853,"p95":12.548,"max":13.19,"overBudget":0},{"tool":"next_dose","count":40,"min":1.178,"p50":1.272,"p95":1.968,"max":3.517,"overBudget":0},{"tool":"log_dose [evening]","count":40,"min":1.484,"p50":1.702,"p95":3.223,"max":4.127,"overBudget":0},{"tool":"report_symptom [A bit dizzy st]","count":40,"min":1.329,"p50":1.477,"p95":2.621,"max":3.204,"overBudget":0},{"tool":"care_summary","count":40,"min":1.517,"p50":2.123,"p95":3.496,"max":3.72,"overBudget":0},{"tool":"who_can_see","count":40,"min":0.912,"p50":1.098,"p95":1.971,"max":3.415,"overBudget":0},{"tool":"open_solo_window","count":40,"min":0.887,"p50":0.972,"p95":1.236,"max":3.007,"overBudget":0},{"tool":"disclosure_ledger [week]","count":40,"min":3.964,"p50":4.824,"p95":6.407,"max":8.398,"overBudget":0}],"serverSide":[{"tool":"care_summary","count":45,"min":0.449,"p50":0.737,"p95":1.133,"max":1.272,"overBudget":0},{"tool":"check_adherence","count":90,"min":0.978,"p50":3.311,"p95":8.934,"max":9.673,"overBudget":0},{"tool":"disclosure_ledger","count":45,"min":2.81,"p50":3.247,"p95":4.781,"max":6.189,"overBudget":0},{"tool":"log_dose","count":45,"min":0.453,"p50":0.531,"p95":1.181,"max":1.618,"overBudget":0},{"tool":"next_dose","count":45,"min":0.123,"p50":0.146,"p95":0.27,"max":0.348,"overBudget":0},{"tool":"open_solo_window","count":45,"min":0.02,"p50":0.022,"p95":0.086,"max":0.243,"overBudget":0},{"tool":"report_symptom","count":45,"min":0.315,"p50":0.375,"p95":0.852,"max":1.078,"overBudget":0},{"tool":"who_can_see","count":45,"min":0.025,"p50":0.03,"p95":0.061,"max":0.102,"overBudget":0}]}}
+
+[1m3. test/ suites[0m
+[2m────────────────────[0m
+[2m16 file(s): test\attack\injection.test.ts, test\attack\laundering.test.ts, test\attack\ledger.test.ts, test\attack\metadata.test.ts, test\attack\solo-abuse.test.ts, test\attack\surface.test.ts, test\attack\unseal.test.ts, test\attack\zz-roster.test.ts, test\authz.test.ts, test\compile.test.ts, test\envelope.test.ts, test\invariant.test.ts, test\latency\latency.test.ts, test\reveal.test.ts, test\solo.test.ts, test\tripwire.test.ts[0m
+TAP version 13
+# Subtest: FINDING F5: a caller can fire the leak alarm from outside, on demand
+ok 1 - FINDING F5: a caller can fire the leak alarm from outside, on demand # TODO F5 — never interpolate unvalidated caller input into a scanned string
+  ---
+  duration_ms: 43.3916
+  ...
+# Subtest: FINDING F6: attacker-supplied text is spoken aloud verbatim
+ok 2 - FINDING F6: attacker-supplied text is spoken aloud verbatim # TODO F6 — use the `?? 'they'` fallback everywhere, or reject unknown subjects
+  ---
+  duration_ms: 8.5689
+  ...
+# Subtest: DEFENDED: the three medication tools fall back to "they" and echo nothing
+ok 3 - DEFENDED: the three medication tools fall back to "they" and echo nothing
+  ---
+  duration_ms: 6.3543
+  ...
+# Subtest: DEFENDED: the medication tools do not fire the alarm on attacker text either
+ok 4 - DEFENDED: the medication tools do not fire the alarm on attacker text either
+  ---
+  duration_ms: 8.3307
+  ...
+# Subtest: FINDING F10: subjectOf and the tool body resolve `subject` differently
+ok 5 - FINDING F10: subjectOf and the tool body resolve `subject` differently # TODO F10 — tools should call resolveSubject, or subjectOf should not exist
+  ---
+  duration_ms: 7.6544
+  ...
+# Subtest: FINDING F10a: an obvious phrasing silently fails instead of resolving
+ok 6 - FINDING F10a: an obvious phrasing silently fails instead of resolving # TODO F10a — "mum" is the first word a user will say
+  ---
+  duration_ms: 6.9356
+  ...
+# Subtest: DEFENDED: a hostile subject cannot pollute the prototype or reach another household
+ok 7 - DEFENDED: a hostile subject cannot pollute the prototype or reach another household
+  ---
+  duration_ms: 10.646
+  ...
+# Subtest: DEFENDED: an attacker-supplied symptom description is protected on arrival, never spoken
+ok 8 - DEFENDED: an attacker-supplied symptom description is protected on arrival, never spoken
+  ---
+  duration_ms: 4.1963
+  ...
+# Subtest: DEFENDED: a symptom description containing a fake marker does not poison later calls
+ok 9 - DEFENDED: a symptom description containing a fake marker does not poison later calls
+  ---
+  duration_ms: 8.7258
+  ...
+# Subtest: DEFENDED: an over-long subject does not become an over-long spoken sentence for the safe tools
+ok 10 - DEFENDED: an over-long subject does not become an over-long spoken sentence for the safe tools
+  ---
+  duration_ms: 2.1016
+  ...
+# Subtest: FINDING F1: composePrivate has no runtime classification check, so sealed becomes private
+ok 11 - FINDING F1: composePrivate has no runtime classification check, so sealed becomes private # TODO F1 — mirror the reveal functions: throw on a non-private part
+  ---
+  duration_ms: 2.1747
+  ...
+# Subtest: FINDING F1a: the laundered value passes revealToPrivateChannel, which refuses sealed directly
+not ok 12 - FINDING F1a: the laundered value passes revealToPrivateChannel, which refuses sealed directly # TODO F1 — the sealed tier is defeated by one hop through the composition primitive
+  ---
+  duration_ms: 0.4854
+  location: 'C:\\Users\\BenYang\\Documents\\Beeeeen\\earshot\\test\\attack\\laundering.test.ts:1:1033'
+  failureType: 'testCodeFailure'
+  error: 'composePrivate("note"): refused sealed value "home address"'
+  code: 'ERR_TEST_FAILURE'
+  name: 'ClassificationError'
+  stack: |-
+    composePrivate (c:\Users\BenYang\Documents\Beeeeen\earshot\src\core\protected.ts:365:23)
+    launder (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\laundering.test.ts:41:12)
+    TestContext.<anonymous> (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\laundering.test.ts:70:27)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:979:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:677:18)
+    Test.postRun (node:internal/test_runner/test:1090:19)
+    Test.run (node:internal/test_runner/test:1018:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: FINDING F1b: the laundered value is delivered on the private channel and appears in the inbox
+not ok 13 - FINDING F1b: the laundered value is delivered on the private channel and appears in the inbox # TODO F1 — spec says sealed never travels, "連私人通道都不給"
+  ---
+  duration_ms: 27.4687
+  location: 'C:\\Users\\BenYang\\Documents\\Beeeeen\\earshot\\test\\attack\\laundering.test.ts:1:1576'
+  failureType: 'testCodeFailure'
+  error: 'composePrivate("note"): refused sealed value "insurance member number"'
+  code: 'ERR_TEST_FAILURE'
+  name: 'ClassificationError'
+  stack: |-
+    composePrivate (c:\Users\BenYang\Documents\Beeeeen\earshot\src\core\protected.ts:365:23)
+    launder (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\laundering.test.ts:41:12)
+    TestContext.<anonymous> (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\laundering.test.ts:88:80)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:979:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:677:18)
+    Test.postRun (node:internal/test_runner/test:1090:19)
+    Test.run (node:internal/test_runner/test:1018:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:677:7)
+  ...
+# Subtest: FINDING F1c: chained with a solo window, a sealed value is SPOKEN ALOUD
+not ok 14 - FINDING F1c: chained with a solo window, a sealed value is SPOKEN ALOUD # TODO F1 — this is the full chain: composePrivate + solo window = invariant violated
+  ---
+  duration_ms: 3.9138
+  location: 'C:\\Users\\BenYang\\Documents\\Beeeeen\\earshot\\test\\attack\\laundering.test.ts:1:2204'
+  failureType: 'testCodeFailure'
+  error: 'composePrivate("note"): refused sealed value "home address"'
+  code: 'ERR_TEST_FAILURE'
+  name: 'ClassificationError'
+  stack: |-
+    composePrivate (c:\Users\BenYang\Documents\Beeeeen\earshot\src\core\protected.ts:365:23)
+    launder (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\laundering.test.ts:41:12)
+    TestContext.<anonymous> (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\laundering.test.ts:108:107)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:979:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:677:18)
+    Test.postRun (node:internal/test_runner/test:1090:19)
+    Test.run (node:internal/test_runner/test:1018:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:677:7)
+  ...
+# Subtest: FINDING F1d: the ledger records the laundered reveal under the wrong label and category
+not ok 15 - FINDING F1d: the ledger records the laundered reveal under the wrong label and category # TODO F1 — the audit trail says "note"/"medication" for a disclosed home address
+  ---
+  duration_ms: 2.5606
+  location: 'C:\\Users\\BenYang\\Documents\\Beeeeen\\earshot\\test\\attack\\laundering.test.ts:1:2840'
+  failureType: 'testCodeFailure'
+  error: 'composePrivate("note"): refused sealed value "home address"'
+  code: 'ERR_TEST_FAILURE'
+  name: 'ClassificationError'
+  stack: |-
+    composePrivate (c:\Users\BenYang\Documents\Beeeeen\earshot\src\core\protected.ts:365:23)
+    launder (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\laundering.test.ts:41:12)
+    TestContext.<anonymous> (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\laundering.test.ts:124:77)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:979:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:677:18)
+    Test.postRun (node:internal/test_runner/test:1090:19)
+    Test.run (node:internal/test_runner/test:1018:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:677:7)
+  ...
+# Subtest: FINDING F2: importing the module grants both reveal capabilities
+not ok 16 - FINDING F2: importing the module grants both reveal capabilities # TODO F2 — a token every importer already holds is a lint, not a capability
+  ---
+  duration_ms: 2.5704
+  location: 'C:\\Users\\BenYang\\Documents\\Beeeeen\\earshot\\test\\attack\\laundering.test.ts:1:3439'
+  failureType: 'testCodeFailure'
+  error: 'any module that imports core/protected.js can unwrap any private value'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'Furosemide'
+  actual: 'Furosemide'
+  operator: 'notStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\laundering.test.ts:152:16)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:979:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:677:18)
+    Test.postRun (node:internal/test_runner/test:1090:19)
+    Test.run (node:internal/test_runner/test:1018:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:677:7)
+  ...
+# Subtest: FINDING F2a: reveal output carries no marker, so it reaches speech untouched
+not ok 17 - FINDING F2a: reveal output carries no marker, so it reaches speech untouched # TODO F2 — the tripwire cannot distinguish authorised plaintext from a leak
+  ---
+  duration_ms: 0.6942
+  location: 'C:\\Users\\BenYang\\Documents\\Beeeeen\\earshot\\test\\attack\\laundering.test.ts:1:3846'
+  failureType: 'testCodeFailure'
+  error: 'three lines of plain, compiling, cast-free TypeScript put a private value into speech: "She took Furosemide this morning."'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\laundering.test.ts:167:16)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:979:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:677:18)
+    Test.postRun (node:internal/test_runner/test:1090:19)
+    Test.run (node:internal/test_runner/test:1018:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:677:7)
+  ...
+# Subtest: DEFENDED: composePrivate never widens a private composition beyond private
+ok 18 - DEFENDED: composePrivate never widens a private composition beyond private
+  ---
+  duration_ms: 0.5146
+  ...
+# Subtest: DEFENDED: no shipped tool passes a sealed value into composePrivate
+ok 19 - DEFENDED: no shipped tool passes a sealed value into composePrivate
+  ---
+  duration_ms: 16.156
+  ...
+# Subtest: DEFENDED: a sealed value cannot be laundered by re-wrapping with protect()
+ok 20 - DEFENDED: a sealed value cannot be laundered by re-wrapping with protect()
+  ---
+  duration_ms: 0.7285
+  ...
+# Subtest: FINDING F3: the ledger card names categories the reader is explicitly denied
+ok 21 - FINDING F3: the ledger card names categories the reader is explicitly denied # TODO F3 — filter rows by canReceivePrivate on the *row's* category
+  ---
+  duration_ms: 41.6346
+  ...
+# Subtest: FINDING F3a: every ledger row is re-classified into the medication category
+ok 22 - FINDING F3a: every ledger row is re-classified into the medication category # TODO F3a — carry the originating category through the ledger row
+  ---
+  duration_ms: 6.0751
+  ...
+# Subtest: FINDING F3b: disclosure_ledger never consults canReceivePrivate at all
+ok 23 - FINDING F3b: disclosure_ledger never consults canReceivePrivate at all # TODO F3b — canAsk is the wrong gate for a private-channel payload
+  ---
+  duration_ms: 7.8178
+  ...
+# Subtest: FINDING F3c: the ledger discloses which accounts read what, to anyone who can ask
+ok 24 - FINDING F3c: the ledger discloses which accounts read what, to anyone who can ask # TODO F3c — a care aide learning what the daughter looked at is its own disclosure
+  ---
+  duration_ms: 7.3383
+  ...
+# Subtest: DEFENDED: the ledger never stores or renders a protected value
+ok 25 - DEFENDED: the ledger never stores or renders a protected value
+  ---
+  duration_ms: 13.1395
+  ...
+# Subtest: DEFENDED: the spoken half of the ledger is counts only
+ok 26 - DEFENDED: the spoken half of the ledger is counts only
+  ---
+  duration_ms: 10.4441
+  ...
+# Subtest: DEFENDED: someone with no grant gets nothing from the ledger
+ok 27 - DEFENDED: someone with no grant gets nothing from the ledger
+  ---
+  duration_ms: 6.4917
+  ...
+# Subtest: DEFENDED: the ledger is append-only in practice — tools only ever push
+ok 28 - DEFENDED: the ledger is append-only in practice — tools only ever push
+  ---
+  duration_ms: 8.3885
+  ...
+# Subtest: DEFENDED: a denial is recorded as loudly as a disclosure
+ok 29 - DEFENDED: a denial is recorded as loudly as a disclosure
+  ---
+  duration_ms: 3.3768
+  ...
+# Subtest: DEFENDED: the ledger records the channel a fact travelled on, for every channel
+ok 30 - DEFENDED: the ledger records the channel a fact travelled on, for every channel
+  ---
+  duration_ms: 4.5106
+  ...
+# Subtest: FINDING F3d: the itemised card silently stops at forty rows while the spoken count does not
+ok 31 - FINDING F3d: the itemised card silently stops at forty rows while the spoken count does not # TODO F3d — say the number actually itemised, or paginate
+  ---
+  duration_ms: 25.3061
+  ...
+# Subtest: the seed still holds the plaintext this suite reasons about
+ok 32 - the seed still holds the plaintext this suite reasons about
+  ---
+  duration_ms: 33.8877
+  ...
+# Subtest: FINDING F7: a spoken-class handle contains the protected medication name verbatim
+ok 33 - FINDING F7: a spoken-class handle contains the protected medication name verbatim # TODO F7 — rename to a class-free handle, e.g. "the morning mineral tablet"
+  ---
+  duration_ms: 2.7688
+  ...
+# Subtest: FINDING F7a: every spoken handle names the drug class, which is the protected indication restated
+ok 34 - FINDING F7a: every spoken handle names the drug class, which is the protected indication restated # TODO F7a — a handle should identify the slot, not the pharmacology
+  ---
+  duration_ms: 2.4802
+  ...
+# Subtest: FINDING F7b: handles plus schedule reconstruct the regimen, hence the protected diagnosis
+ok 35 - FINDING F7b: handles plus schedule reconstruct the regimen, hence the protected diagnosis # TODO F7b — accept and document, or coarsen the handles
+  ---
+  duration_ms: 2.724
+  ...
+# Subtest: FINDING F8: care_summary speaks an item count that reveals how many medications there are
+not ok 36 - FINDING F8: care_summary speaks an item count that reveals how many medications there are # TODO F8 — say "sent" without the count, or count only non-derived items
+  ---
+  duration_ms: 14.4461
+  location: 'C:\\Users\\BenYang\\Documents\\Beeeeen\\earshot\\test\\attack\\metadata.test.ts:1:3022'
+  failureType: 'testCodeFailure'
+  error: 'the spoken receipt discloses the size of the protected set: Sarah hears 9, Dana hears 6, so a listener in the room learns Margaret takes 5 medications and that a diagnosis, a prescriber and vitals are all on file'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\metadata.test.ts:155:16)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:979:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:677:18)
+    Test.postRun (node:internal/test_runner/test:1090:19)
+    Test.run (node:internal/test_runner/test:1018:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:677:7)
+  ...
+# Subtest: FINDING F8a: differencing two accounts identifies which categories hold data
+not ok 37 - FINDING F8a: differencing two accounts identifies which categories hold data # TODO F8a — the count must not vary with what exists, only with what was sent
+  ---
+  duration_ms: 13.2609
+  location: 'C:\\Users\\BenYang\\Documents\\Beeeeen\\earshot\\test\\attack\\metadata.test.ts:1:3958'
+  failureType: 'testCodeFailure'
+  error: |-
+    an aide denied diagnosis/clinician/vitals can still count them: 9 - 6 = 3 facts exist in the three categories she is not allowed to see
+    
+    9 !== 6
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 6
+  actual: 9
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\metadata.test.ts:178:16)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:979:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:677:18)
+    Test.postRun (node:internal/test_runner/test:1090:19)
+    Test.run (node:internal/test_runner/test:1018:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:677:7)
+  ...
+# Subtest: DEFENDED: labels and categories name the kind of fact, never the fact
+ok 38 - DEFENDED: labels and categories name the kind of fact, never the fact
+  ---
+  duration_ms: 3.0592
+  ...
+# Subtest: DEFENDED: sealed labels disclose the category, not the value
+ok 39 - DEFENDED: sealed labels disclose the category, not the value
+  ---
+  duration_ms: 3.4624
+  ...
+# Subtest: DEFENDED: next_dose speaks a time and a gap, and never how many items are due
+ok 40 - DEFENDED: next_dose speaks a time and a gap, and never how many items are due
+  ---
+  duration_ms: 7.3732
+  ...
+# Subtest: DEFENDED: check_adherence speaks counts of doses, never of distinct medications
+ok 41 - DEFENDED: check_adherence speaks counts of doses, never of distinct medications
+  ---
+  duration_ms: 25.3606
+  ...
+# Subtest: DEFENDED: repeated identical questions do not accumulate into a disclosure
+ok 42 - DEFENDED: repeated identical questions do not accumulate into a disclosure
+  ---
+  duration_ms: 59.4155
+  ...
+# Subtest: DEFENDED: asking as two accounts does not reveal a third account's private data
+ok 43 - DEFENDED: asking as two accounts does not reveal a third account's private data
+  ---
+  duration_ms: 9.8919
+  ...
+# Subtest: DEFENDED: the grant table itself is spoken, but grant metadata is not a fact about health
+ok 44 - DEFENDED: the grant table itself is spoken, but grant metadata is not a fact about health
+  ---
+  duration_ms: 2.7618
+  ...
+# Subtest: FINDING F4: underSolo speaks from a window belonging to another device
+not ok 45 - FINDING F4: underSolo speaks from a window belonging to another device # TODO F4 — underSolo must take the asker and device and re-verify them
+  ---
+  duration_ms: 36.3785
+  location: 'C:\\Users\\BenYang\\Documents\\Beeeeen\\earshot\\test\\attack\\solo-abuse.test.ts:1:510'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected exception: underSolo spoke a private value with no device check: undefined'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  operator: 'throws'
+  stack: |-
+    TestContext.<anonymous> (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\solo-abuse.test.ts:55:16)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:979:25)
+    Test.start (node:internal/test_runner/test:877:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: FINDING F4a: underSolo never checks that the reader is the asker who declared solitude
+not ok 46 - FINDING F4a: underSolo never checks that the reader is the asker who declared solitude # TODO F4 — Sarah's declaration must not unlock anything for Dana
+  ---
+  duration_ms: 2.457
+  location: 'C:\\Users\\BenYang\\Documents\\Beeeeen\\earshot\\test\\attack\\solo-abuse.test.ts:1:1131'
+  failureType: 'testCodeFailure'
+  error: 'underSolo has no parameter for the current asker, so it cannot tell Dana from Sarah'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\solo-abuse.test.ts:75:16)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:979:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:677:18)
+    Test.postRun (node:internal/test_runner/test:1090:19)
+    Test.run (node:internal/test_runner/test:1018:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: FINDING F4b: the ledger attributes the disclosure to the window owner, not the reader
+not ok 47 - FINDING F4b: the ledger attributes the disclosure to the window owner, not the reader # TODO F4 — a misattributed audit row is worse than no row
+  ---
+  duration_ms: 4.2017
+  location: 'C:\\Users\\BenYang\\Documents\\Beeeeen\\earshot\\test\\attack\\solo-abuse.test.ts:1:1712'
+  failureType: 'testCodeFailure'
+  error: |-
+    the ledger blamed sarah for a disclosure another account read
+    
+    'sarah' !== 'dana'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'dana'
+  actual: 'sarah'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\solo-abuse.test.ts:94:16)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:979:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:677:18)
+    Test.postRun (node:internal/test_runner/test:1090:19)
+    Test.run (node:internal/test_runner/test:1018:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:677:7)
+  ...
+# Subtest: FINDING F4c: openSoloWindow itself accepts an asker with no grant at all
+ok 48 - FINDING F4c: openSoloWindow itself accepts an asker with no grant at all # TODO F4c — the domain function should refuse; today only the tool checks
+  ---
+  duration_ms: 4.6197
+  ...
+# Subtest: FINDING F4d: a solo window ignores grant categories entirely
+ok 49 - FINDING F4d: a solo window ignores grant categories entirely # TODO F4d — revealUnderSoloWindow checks classification but never the category or the viewer
+  ---
+  duration_ms: 2.4737
+  ...
+# Subtest: DEFENDED: racing the expiry does not win — liveness is re-checked at speech time
+ok 50 - DEFENDED: racing the expiry does not win — liveness is re-checked at speech time
+  ---
+  duration_ms: 4.5285
+  ...
+# Subtest: DEFENDED: a revoked window cannot be revived by advancing to a time inside its range
+ok 51 - DEFENDED: a revoked window cannot be revived by advancing to a time inside its range
+  ---
+  duration_ms: 3.0368
+  ...
+# Subtest: DEFENDED: through the real tool, a second device gets no solo output
+ok 52 - DEFENDED: through the real tool, a second device gets no solo output
+  ---
+  duration_ms: 9.3809
+  ...
+# Subtest: DEFENDED: through the real tool, another account gets no solo output
+ok 53 - DEFENDED: through the real tool, another account gets no solo output
+  ---
+  duration_ms: 6.6948
+  ...
+# Subtest: DEFENDED: the real open_solo_window tool refuses someone with no grant
+ok 54 - DEFENDED: the real open_solo_window tool refuses someone with no grant
+  ---
+  duration_ms: 4.1259
+  ...
+# Subtest: DEFENDED: the real open_solo_window tool binds to the asker and device from the token
+ok 55 - DEFENDED: the real open_solo_window tool binds to the asker and device from the token
+  ---
+  duration_ms: 3.0795
+  ...
+# Subtest: DEFENDED: solo output still cannot contain a sealed value through the real tool
+ok 56 - DEFENDED: solo output still cannot contain a sealed value through the real tool
+  ---
+  duration_ms: 4.8171
+  ...
+# Subtest: DEFENDED: every value spoken under a window leaves a ledger row
+ok 57 - DEFENDED: every value spoken under a window leaves a ledger row
+  ---
+  duration_ms: 10.3179
+  ...
+# Subtest: FINDING F9: defineTool never scans tool metadata, so a marker reaches tools/list
+ok 58 - FINDING F9: defineTool never scans tool metadata, so a marker reaches tools/list # TODO F9 — run assertNoTaint over name/title/description/inputShape inside defineTool
+  ---
+  duration_ms: 2.373
+  ...
+# Subtest: FINDING F9a: and a scan would not catch the plaintext version anyway
+ok 59 - FINDING F9a: and a scan would not catch the plaintext version anyway # TODO F9a — depends on F0/F2: plaintext carries no marker, so no scan can see it
+  ---
+  duration_ms: 32.7232
+  ...
+# Subtest: DEFENDED: the eight shipped tools carry no protected value in their metadata
+ok 60 - DEFENDED: the eight shipped tools carry no protected value in their metadata
+  ---
+  duration_ms: 0.563
+  ...
+# Subtest: DEFENDED: every shipped description tells the model the detail is not in the response
+ok 61 - DEFENDED: every shipped description tells the model the detail is not in the response
+  ---
+  duration_ms: 0.6838
+  ...
+# Subtest: FINDING F11: a late tripwire failure leaves the private delivery already committed
+ok 62 - FINDING F11: a late tripwire failure leaves the private delivery already committed # TODO F11 — scan before delivering, or roll back; "Nothing was disclosed" must be true
+  ---
+  duration_ms: 7.063
+  ...
+# Subtest: FINDING F12: the exported TAINT_PATTERN is a stateful global regex
+ok 63 - FINDING F12: the exported TAINT_PATTERN is a stateful global regex # TODO F12 — export a factory, or drop the /g flag from the exported copy
+  ---
+  duration_ms: 0.2242
+  ...
+# Subtest: DEFENDED: assertNoTaint is itself immune to the lastIndex trap
+ok 64 - DEFENDED: assertNoTaint is itself immune to the lastIndex trap
+  ---
+  duration_ms: 0.4217
+  ...
+# Subtest: FINDING F14: assertNoTaintDeep does not look inside a Map or a Set
+ok 65 - FINDING F14: assertNoTaintDeep does not look inside a Map or a Set # TODO F14 — walk Map/Set, or document the deep scan as own-enumerable-only
+  ---
+  duration_ms: 0.2542
+  ...
+# Subtest: DEFENDED: a Map-held Protected does not actually reach the wire
+ok 66 - DEFENDED: a Map-held Protected does not actually reach the wire
+  ---
+  duration_ms: 0.4322
+  ...
+# Subtest: FINDING F14a: assertNoTaintDeep skips a function-valued toJSON that would run on serialisation
+not ok 67 - FINDING F14a: assertNoTaintDeep skips a function-valued toJSON that would run on serialisation # TODO F14a — the deep scan and JSON.stringify disagree about what is reachable
+  ---
+  duration_ms: 3.4775
+  location: 'C:\\Users\\BenYang\\Documents\\Beeeeen\\earshot\\test\\attack\\surface.test.ts:1:4605'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected exception: the deep scan passed an object whose serialisation is "Furosemide 40 mg" — the scan walks own enumerable properties, JSON.stringify calls toJSON'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  stack: |-
+    TestContext.<anonymous> (C:\Users\BenYang\Documents\Beeeeen\earshot\test\attack\surface.test.ts:208:16)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:979:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:677:18)
+    Test.postRun (node:internal/test_runner/test:1090:19)
+    Test.run (node:internal/test_runner/test:1018:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:677:7)
+  ...
+# Subtest: DEFENDED: SpokenData forbids the toJSON smuggler at compile time
+ok 68 - DEFENDED: SpokenData forbids the toJSON smuggler at compile time
+  ---
+  duration_ms: 6.3167
+  ...
+# Subtest: DEFENDED: no refusal text quotes the fact it is refusing
+ok 69 - DEFENDED: no refusal text quotes the fact it is refusing
+  ---
+  duration_ms: 4.8865
+  ...
+# Subtest: DEFENDED: a reveal refusal names the label, never the value
+ok 70 - DEFENDED: a reveal refusal names the label, never the value
+  ---
+  duration_ms: 2.9516
+  ...
+# Subtest: DEFENDED: a LeakError message names markers, never payloads
+ok 71 - DEFENDED: a LeakError message names markers, never payloads
+  ---
+  duration_ms: 0.3475
+  ...
+# Subtest: DEFENDED: the inbox is the only rendering that contains plaintext
+ok 72 - DEFENDED: the inbox is the only rendering that contains plaintext
+  ---
+  duration_ms: 4.3082
+  ...
+# Subtest: DEFENDED: a tool name cannot be used to smuggle a value through toolByName
+ok 73 - DEFENDED: a tool name cannot be used to smuggle a value through toolByName
+  ---
+  duration_ms: 0.9676
+  ...
+# Subtest: FINDING F0: unseal() is a public prototype method and returns the plaintext
+ok 74 - FINDING F0: unseal() is a public prototype method and returns the plaintext # TODO F0 — make the payload reachable only through the two capability-gated functions
+  ---
+  duration_ms: 1.7096
+  ...
+# Subtest: FINDING F0a: unseal() ignores the classification, so it opens sealed values too
+ok 75 - FINDING F0a: unseal() ignores the classification, so it opens sealed values too # TODO F0 — sealed must never be unsealable outside the app
+  ---
+  duration_ms: 0.3572
+  ...
+# Subtest: FINDING F0b: unseal() output reaches a spoken string, and no tripwire fires
+ok 76 - FINDING F0b: unseal() output reaches a spoken string, and no tripwire fires # TODO F0 — this is a direct violation of the core invariant
+  ---
+  duration_ms: 0.4663
+  ...
+# Subtest: FINDING F0c: an unsealed sealed value passes the envelope tripwire onto the MCP wire
+ok 77 - FINDING F0c: an unsealed sealed value passes the envelope tripwire onto the MCP wire # TODO F0 — the marker is the only thing the tripwire can see, and plaintext has none
+  ---
+  duration_ms: 29.55
+  ...
+# Subtest: the marker getter is also public, but discloses nothing
+ok 78 - the marker getter is also public, but discloses nothing
+  ---
+  duration_ms: 0.4524
+  ...
+# Subtest: \#payload itself remains genuinely unreachable
+ok 79 - \#payload itself remains genuinely unreachable
+  ---
+  duration_ms: 1.0134
+  ...
+# Subtest: a hand-built lookalike cannot unseal a real Protected
+ok 80 - a hand-built lookalike cannot unseal a real Protected
+  ---
+  duration_ms: 0.6896
+  ...
+# ==============================================================================
+# EARSHOT QA — 16 distinct findings, 38 failing assertions.
+# These are reported as TAP "\# TODO", so they do NOT appear in `\# pass` or `\# fail`.
+# scripts/test-all.mjs counts only those two, and will therefore under-report.
+# ==============================================================================
+#   F0    4 test(s)  attack/unseal.test.ts — unseal() is a public method returning plaintext
+#   F1    5 test(s)  attack/laundering.test.ts — composePrivate has no runtime classification check
+#   F2    2 test(s)  attack/laundering.test.ts — reveal capabilities are exported constants
+#   F3    5 test(s)  attack/ledger.test.ts — the ledger re-labels every row as `medication`
+#   F4    5 test(s)  attack/solo-abuse.test.ts — underSolo re-checks neither asker nor device
+#   F5    1 test(s)  attack/injection.test.ts — the leak alarm is remotely triggerable
+#   F6    1 test(s)  attack/injection.test.ts — caller text is spoken verbatim
+#   F7    3 test(s)  attack/metadata.test.ts — spokenHandle carries the protected medication name
+#   F8    2 test(s)  attack/metadata.test.ts — the spoken item count sizes the protected set
+#   F9    2 test(s)  attack/surface.test.ts — tool metadata is never scanned
+#   F10   2 test(s)  attack/injection.test.ts — subjectOf and the tool bodies disagree
+#   F11   1 test(s)  attack/surface.test.ts — a late failure leaves deliveries committed
+#   F12   1 test(s)  attack/surface.test.ts — TAINT_PATTERN is a stateful global regex
+#   F14   2 test(s)  attack/surface.test.ts — assertNoTaintDeep skips Maps, Sets and toJSON
+#   F15   1 test(s)  compile.test.ts — RESOLVED mid-review: src/negative/ landed; kept as a regression check
+#   F17   1 test(s)  latency/latency.test.ts — /metrics omits the envelope
+# ==============================================================================
+# Subtest: every known-failing test carries a finding id
+ok 81 - every known-failing test carries a finding id
+  ---
+  duration_ms: 1.9413
+  ...
+# Subtest: every finding on the roster has at least one test proving it
+ok 82 - every finding on the roster has at least one test proving it
+  ---
+  duration_ms: 0.3471
+  ...
+# Subtest: no finding test exists outside the roster
+ok 83 - no finding test exists outside the roster
+  ---
+  duration_ms: 0.2101
+  ...
+# Subtest: the roster is printed so a pass/fail-only counter cannot hide it
+ok 84 - the roster is printed so a pass/fail-only counter cannot hide it
+  ---
+  duration_ms: 1.1243
+  ...
+# Subtest: canAsk follows the grant table, and a missing row is a denial
+ok 85 - canAsk follows the grant table, and a missing row is a denial
+  ---
+  duration_ms: 30.6998
+  ...
+# Subtest: canReceivePrivate is per category, per viewer
+ok 86 - canReceivePrivate is per category, per viewer
+  ---
+  duration_ms: 3.792
+  ...
+# Subtest: a denial reason is safe to say aloud and never quotes the fact
+ok 87 - a denial reason is safe to say aloud and never quotes the fact
+  ---
+  duration_ms: 3.7774
+  ...
+# Subtest: sealed is never granted through the grant table, to anyone
+ok 88 - sealed is never granted through the grant table, to anyone
+  ---
+  duration_ms: 0.1812
+  ...
+# Subtest: viewersOf lists exactly the rows on file, sorted, with no fact attached
+ok 89 - viewersOf lists exactly the rows on file, sorted, with no fact attached
+  ---
+  duration_ms: 3.8932
+  ...
+# Subtest: care_summary: Sarah, Dana, Margaret and Tom get four different answers
+ok 90 - care_summary: Sarah, Dana, Margaret and Tom get four different answers
+  ---
+  duration_ms: 14.5331
+  ...
+# Subtest: care_summary: Dana's card carries no diagnosis, prescriber or vitals plaintext
+ok 91 - care_summary: Dana's card carries no diagnosis, prescriber or vitals plaintext
+  ---
+  duration_ms: 2.8266
+  ...
+# Subtest: care_summary: nobody, at any grant level, receives a sealed fact on any channel
+ok 92 - care_summary: nobody, at any grant level, receives a sealed fact on any channel
+  ---
+  duration_ms: 12.3061
+  ...
+# Subtest: care_summary: sealed facts appear only as labels and app pointers
+ok 93 - care_summary: sealed facts appear only as labels and app pointers
+  ---
+  duration_ms: 3.879
+  ...
+# Subtest: care_summary: the spoken half is a receipt for everyone, and names the withheld categories
+ok 94 - care_summary: the spoken half is a receipt for everyone, and names the withheld categories
+  ---
+  duration_ms: 7.6139
+  ...
+# Subtest: check_adherence: the spoken answer is the same shape for everyone; the delivery is not
+ok 95 - check_adherence: the spoken answer is the same shape for everyone; the delivery is not
+  ---
+  duration_ms: 14.3627
+  ...
+# Subtest: check_adherence: a refusal is written to the ledger as a denial
+ok 96 - check_adherence: a refusal is written to the ledger as a denial
+  ---
+  duration_ms: 2.9924
+  ...
+# Subtest: who_can_see is loud on purpose, and still carries no protected fact
+ok 97 - who_can_see is loud on purpose, and still carries no protected fact
+  ---
+  duration_ms: 3.9351
+  ...
+# Subtest: who_can_see refuses someone with no grant
+ok 98 - who_can_see refuses someone with no grant
+  ---
+  duration_ms: 3.7911
+  ...
+# Subtest: an asker carries only what an access token can establish
+ok 99 - an asker carries only what an access token can establish
+  ---
+  duration_ms: 2.8582
+  ...
+# Subtest: the negative fixtures are actually annotated
+ok 100 - the negative fixtures are actually annotated
+  ---
+  duration_ms: 1.3012
+  ...
+# Subtest: positive-control.ok.ts compiles clean, so the compiler is really checking
+ok 101 - positive-control.ok.ts compiles clean, so the compiler is really checking
+  ---
+  duration_ms: 0.162
+  ...
+# Subtest: Layer 1: call-tostring is a compile error (TS2349)
+ok 102 - Layer 1: call-tostring is a compile error (TS2349)
+  ---
+  duration_ms: 0.1378
+  ...
+# Subtest: Layer 1: compose-sealed is a compile error (TS2322)
+ok 103 - Layer 1: compose-sealed is a compile error (TS2322)
+  ---
+  duration_ms: 0.0681
+  ...
+# Subtest: Layer 1: plain-string-as-spoken is a compile error (TS2322)
+ok 104 - Layer 1: plain-string-as-spoken is a compile error (TS2322)
+  ---
+  duration_ms: 0.0542
+  ...
+# Subtest: Layer 1: protected-into-data is a compile error (TS2322)
+ok 105 - Layer 1: protected-into-data is a compile error (TS2322)
+  ---
+  duration_ms: 0.0987
+  ...
+# Subtest: Layer 1: say-protected is a compile error (TS2345)
+ok 106 - Layer 1: say-protected is a compile error (TS2345)
+  ---
+  duration_ms: 0.0671
+  ...
+# Subtest: Layer 1: sealed-into-private is a compile error (TS2322)
+ok 107 - Layer 1: sealed-into-private is a compile error (TS2322)
+  ---
+  duration_ms: 0.0599
+  ...
+# Subtest: Layer 1: solo-speaks-sealed is a compile error (TS2345)
+ok 108 - Layer 1: solo-speaks-sealed is a compile error (TS2345)
+  ---
+  duration_ms: 0.1848
+  ...
+# Subtest: no fixture fails for a reason nobody declared
+ok 109 - no fixture fails for a reason nobody declared
+  ---
+  duration_ms: 0.3309
+  ...
+# Subtest: FINDING F15 (resolved mid-review): src/negative/ now exists, as the docstrings claim
+ok 110 - FINDING F15 (resolved mid-review): src/negative/ now exists, as the docstrings claim # TODO F15 — was missing when this suite was written; kept as a regression check
+  ---
+  duration_ms: 0.2101
+  ...
+# Subtest: no protected plaintext leaves over MCP, for any tool, for any account
+ok 111 - no protected plaintext leaves over MCP, for any tool, for any account
+  ---
+  duration_ms: 119.5518
+  ...
+# Subtest: no taint marker leaves over MCP, for any tool, for any account
+ok 112 - no taint marker leaves over MCP, for any tool, for any account
+  ---
+  duration_ms: 46.1147
+  ...
+# Subtest: the MCP response carries a receipt, never the payload
+ok 113 - the MCP response carries a receipt, never the payload
+  ---
+  duration_ms: 3.4032
+  ...
+# Subtest: the private payload is on the second channel, and only there
+ok 114 - the private payload is on the second channel, and only there
+  ---
+  duration_ms: 3.5008
+  ...
+# Subtest: content and structuredContent carry the same spoken sentence and nothing more
+ok 115 - content and structuredContent carry the same spoken sentence and nothing more
+  ---
+  duration_ms: 3.3676
+  ...
+# Subtest: _meta reports the latency against the documented budget
+ok 116 - _meta reports the latency against the documented budget
+  ---
+  duration_ms: 3.074
+  ...
+# Subtest: _meta says so when a call blows the budget
+ok 117 - _meta says so when a call blows the budget
+  ---
+  duration_ms: 2.6632
+  ...
+# Subtest: the envelope throws when a tool hands it a tainted spoken string
+ok 118 - the envelope throws when a tool hands it a tainted spoken string
+  ---
+  duration_ms: 2.0004
+  ...
+# Subtest: the envelope throws when a Protected is smuggled into structured data
+ok 119 - the envelope throws when a Protected is smuggled into structured data
+  ---
+  duration_ms: 1.6254
+  ...
+# Subtest: the envelope throws on a tainted sealed pointer
+ok 120 - the envelope throws on a tainted sealed pointer
+  ---
+  duration_ms: 2.7417
+  ...
+# Subtest: every spoken answer is written to the ledger with its length, never its content
+ok 121 - every spoken answer is written to the ledger with its length, never its content
+  ---
+  duration_ms: 4.7208
+  ...
+# Subtest: a private delivery writes one ledger row per field, naming the label only
+ok 122 - a private delivery writes one ledger row per field, naming the label only
+  ---
+  duration_ms: 3.7133
+  ...
+# Subtest: a sealed pointer writes a sealed-refused row and sends nothing
+ok 123 - a sealed pointer writes a sealed-refused row and sends nothing
+  ---
+  duration_ms: 1.3833
+  ...
+# Subtest: report_symptom notifies other grant-holders out-of-band, and says only who
+ok 124 - report_symptom notifies other grant-holders out-of-band, and says only who
+  ---
+  duration_ms: 1.6063
+  ...
+# Subtest: renderInbox is the only place plaintext appears, and marking read is opt-out
+ok 125 - renderInbox is the only place plaintext appears, and marking read is opt-out
+  ---
+  duration_ms: 1.4022
+  ...
+# Subtest: an inbox is per person: Dana's card is not in Sarah's inbox
+ok 126 - an inbox is per person: Dana's card is not in Sarah's inbox
+  ---
+  duration_ms: 1.1885
+  ...
+# Subtest: the delivery receipt cannot be replayed to fetch the payload over MCP
+ok 127 - the delivery receipt cannot be replayed to fetch the payload over MCP
+  ---
+  duration_ms: 2.4524
+  ...
+# Subtest: every tool declares the shared output schema keys the envelope fills
+ok 128 - every tool declares the shared output schema keys the envelope fills
+  ---
+  duration_ms: 1.3452
+  ...
+# Subtest: wireStrings finds nothing sensitive across all eight tools
+ok 129 - wireStrings finds nothing sensitive across all eight tools
+  ---
+  duration_ms: 14.1615
+  ...
+# Subtest: the private card really does hold what the spoken answer withheld
+ok 130 - the private card really does hold what the spoken answer withheld
+  ---
+  duration_ms: 1.4192
+  ...
+# Subtest: String(p) yields the taint marker, not the plaintext
+ok 131 - String(p) yields the taint marker, not the plaintext
+  ---
+  duration_ms: 2.9505
+  ...
+# Subtest: p + '' yields the taint marker
+ok 132 - p + '' yields the taint marker
+  ---
+  duration_ms: 0.4203
+  ...
+# Subtest: template interpolation via `as any` yields the taint marker
+ok 133 - template interpolation via `as any` yields the taint marker
+  ---
+  duration_ms: 0.1995
+  ...
+# Subtest: JSON.stringify(p) yields the taint marker
+ok 134 - JSON.stringify(p) yields the taint marker
+  ---
+  duration_ms: 0.2755
+  ...
+# Subtest: JSON.stringify of a structure containing p yields the marker in place of the value
+ok 135 - JSON.stringify of a structure containing p yields the marker in place of the value
+  ---
+  duration_ms: 0.2799
+  ...
+# Subtest: util.inspect(p) yields the taint marker
+ok 136 - util.inspect(p) yields the taint marker
+  ---
+  duration_ms: 0.2797
+  ...
+# Subtest: util.inspect at depth, inside a container, yields the marker
+ok 137 - util.inspect at depth, inside a container, yields the marker
+  ---
+  duration_ms: 0.3982
+  ...
+# Subtest: console.log(p) writes the taint marker to stdout, never the plaintext
+ok 138 - console.log(p) writes the taint marker to stdout, never the plaintext
+  ---
+  duration_ms: 0.8166
+  ...
+# Subtest: valueOf and Symbol.toPrimitive both route to the marker
+ok 139 - valueOf and Symbol.toPrimitive both route to the marker
+  ---
+  duration_ms: 0.5842
+  ...
+# Subtest: a numeric payload also stringifies to the marker, never to the number
+ok 140 - a numeric payload also stringifies to the marker, never to the number
+  ---
+  duration_ms: 0.5546
+  ...
+# Subtest: the marker is per-instance, so two wrappings of the same value differ
+ok 141 - the marker is per-instance, so two wrappings of the same value differ
+  ---
+  duration_ms: 0.2789
+  ...
+# Subtest: Symbol.toStringTag reports Protected, so a bare object print is identifiable
+ok 142 - Symbol.toStringTag reports Protected, so a bare object print is identifiable
+  ---
+  duration_ms: 0.1539
+  ...
+# Subtest: Object.keys exposes only the three public metadata fields
+ok 143 - Object.keys exposes only the three public metadata fields
+  ---
+  duration_ms: 0.9391
+  ...
+# Subtest: spread copies no payload
+ok 144 - spread copies no payload
+  ---
+  duration_ms: 0.1877
+  ...
+# Subtest: structuredClone copies no payload
+ok 145 - structuredClone copies no payload
+  ---
+  duration_ms: 0.1894
+  ...
+# Subtest: Object.getOwnPropertyDescriptors exposes no payload descriptor
+ok 146 - Object.getOwnPropertyDescriptors exposes no payload descriptor
+  ---
+  duration_ms: 0.1598
+  ...
+# Subtest: own symbol keys expose no payload either
+ok 147 - own symbol keys expose no payload either
+  ---
+  duration_ms: 0.1322
+  ...
+# Subtest: the instance is frozen, so label and category cannot be swapped after the fact
+ok 148 - the instance is frozen, so label and category cannot be swapped after the fact
+  ---
+  duration_ms: 0.5418
+  ...
+# Subtest: no accessor on the prototype leaks the payload by coercion
+ok 149 - no accessor on the prototype leaks the payload by coercion
+  ---
+  duration_ms: 0.2411
+  ...
+# Subtest: the payload is not reachable under any guessable property name
+ok 150 - the payload is not reachable under any guessable property name
+  ---
+  duration_ms: 0.1654
+  ...
+# Subtest: reflection yields no marker, so a reflected copy is invisible to the tripwire
+ok 151 - reflection yields no marker, so a reflected copy is invisible to the tripwire
+  ---
+  duration_ms: 0.2637
+  ...
+# Subtest: a sealed value behaves identically at Layer 2
+ok 152 - a sealed value behaves identically at Layer 2
+  ---
+  duration_ms: 0.2108
+  ...
+# Subtest: isProtected identifies both classifications and rejects lookalikes
+ok 153 - isProtected identifies both classifications and rejects lookalikes
+  ---
+  duration_ms: 0.1589
+  ...
+# Subtest: every tool was measured over the declared number of iterations
+ok 154 - every tool was measured over the declared number of iterations
+  ---
+  duration_ms: 0.6653
+  ...
+# Subtest: every tool stays inside the 500 ms platform budget at P95
+ok 155 - every tool stays inside the 500 ms platform budget at P95
+  ---
+  duration_ms: 0.1033
+  ...
+# Subtest: no single measured call exceeded the budget
+ok 156 - no single measured call exceeded the budget
+  ---
+  duration_ms: 0.0848
+  ...
+# Subtest: the whole handler leaves at least 90% of the budget for the network hop
+ok 157 - the whole handler leaves at least 90% of the budget for the network hop
+  ---
+  duration_ms: 0.064
+  ...
+# Subtest: serialisation is a rounding error next to the handler
+ok 158 - serialisation is a rounding error next to the handler
+  ---
+  duration_ms: 0.0751
+  ...
+# Subtest: FINDING F17: /metrics records the handler without its envelope
+not ok 159 - FINDING F17: /metrics records the handler without its envelope # TODO F17 — record after toCallToolResult, or document metrics as run-only
+  ---
+  duration_ms: 1.8711
+  location: 'C:\\Users\\BenYang\\Documents\\Beeeeen\\earshot\\test\\latency\\latency.test.ts:1:3379'
+  failureType: 'testCodeFailure'
+  error: |-
+    the number published at /metrics and in structuredContent.serverLatencyMs understates the handler by up to 0.112 ms (disclosure_ledger); per-tool gaps: check_adherence +0.048, next_dose +0.008, log_dose +0.035, report_symptom +0.035, care_summary +0.03, who_can_see +0.011, open_solo_window +0.013, disclosure_ledger +0.112
+    
+    0.112 !== 0
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 0.112
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (C:\Users\BenYang\Documents\Beeeeen\earshot\test\latency\latency.test.ts:191:16)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:979:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:677:18)
+    Test.postRun (node:internal/test_runner/test:1090:19)
+    Test.run (node:internal/test_runner/test:1018:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:677:7)
+  ...
+# Subtest: the results table is written to RESULTS.md
+ok 160 - the results table is written to RESULTS.md
+  ---
+  duration_ms: 1.1157
+  ...
+# Subtest: revealToPrivateChannel returns the plaintext with the right capability
+ok 161 - revealToPrivateChannel returns the plaintext with the right capability
+  ---
+  duration_ms: 1.2057
+  ...
+# Subtest: revealUnderSoloWindow returns the plaintext with the right capability
+ok 162 - revealUnderSoloWindow returns the plaintext with the right capability
+  ---
+  duration_ms: 0.2305
+  ...
+# Subtest: the two capabilities are not interchangeable
+ok 163 - the two capabilities are not interchangeable
+  ---
+  duration_ms: 0.4199
+  ...
+# Subtest: a forged capability object is rejected by both reveal paths
+ok 164 - a forged capability object is rejected by both reveal paths
+  ---
+  duration_ms: 0.2667
+  ...
+# Subtest: RevealCapability cannot be constructed without the module-private guard
+ok 165 - RevealCapability cannot be constructed without the module-private guard
+  ---
+  duration_ms: 0.1661
+  ...
+# Subtest: the guard symbol is not reachable through the global symbol registry
+ok 166 - the guard symbol is not reachable through the global symbol registry
+  ---
+  duration_ms: 0.0919
+  ...
+# Subtest: revealToPrivateChannel refuses a sealed value at runtime
+ok 167 - revealToPrivateChannel refuses a sealed value at runtime
+  ---
+  duration_ms: 0.3499
+  ...
+# Subtest: revealUnderSoloWindow refuses a sealed value at runtime
+ok 168 - revealUnderSoloWindow refuses a sealed value at runtime
+  ---
+  duration_ms: 0.1477
+  ...
+# Subtest: the sealed refusal fires before the capability is even consulted... it does not
+ok 169 - the sealed refusal fires before the capability is even consulted... it does not
+  ---
+  duration_ms: 0.2796
+  ...
+# Subtest: composePrivate builds a private value without the parts ever leaving as plaintext
+ok 170 - composePrivate builds a private value without the parts ever leaving as plaintext
+  ---
+  duration_ms: 0.627
+  ...
+# Subtest: composePrivate accepts plain scalars alongside protected parts
+ok 171 - composePrivate accepts plain scalars alongside protected parts
+  ---
+  duration_ms: 0.2347
+  ...
+# Subtest: a solo window lasts exactly five minutes
+ok 172 - a solo window lasts exactly five minutes
+  ---
+  duration_ms: 30.7107
+  ...
+# Subtest: a solo window is bound to one asker
+ok 173 - a solo window is bound to one asker
+  ---
+  duration_ms: 3.0324
+  ...
+# Subtest: a solo window is bound to one device
+ok 174 - a solo window is bound to one device
+  ---
+  duration_ms: 1.7586
+  ...
+# Subtest: a solo window is bound to one subject
+ok 175 - a solo window is bound to one subject
+  ---
+  duration_ms: 2.5379
+  ...
+# Subtest: opening a second window on the same device revokes the first
+ok 176 - opening a second window on the same device revokes the first
+  ---
+  duration_ms: 2.7672
+  ...
+# Subtest: closing a window early takes effect immediately
+ok 177 - closing a window early takes effect immediately
+  ---
+  duration_ms: 3.98
+  ...
+# Subtest: underSolo speaks a protected value while the window is live
+ok 178 - underSolo speaks a protected value while the window is live
+  ---
+  duration_ms: 2.7591
+  ...
+# Subtest: underSolo writes one ledger row per protected field revealed
+ok 179 - underSolo writes one ledger row per protected field revealed
+  ---
+  duration_ms: 4.584
+  ...
+# Subtest: the ledger row names the kind of fact, never the fact
+ok 180 - the ledger row names the kind of fact, never the fact
+  ---
+  duration_ms: 2.7525
+  ...
+# Subtest: opening a window is itself recorded in the ledger
+ok 181 - opening a window is itself recorded in the ledger
+  ---
+  duration_ms: 2.5629
+  ...
+# Subtest: underSolo re-checks liveness at the moment of speech, not at authorisation
+ok 182 - underSolo re-checks liveness at the moment of speech, not at authorisation
+  ---
+  duration_ms: 2.1584
+  ...
+# Subtest: an expired window discloses nothing, not even a partial sentence
+ok 183 - an expired window discloses nothing, not even a partial sentence
+  ---
+  duration_ms: 2.4574
+  ...
+# Subtest: a solo window refuses a sealed value at runtime
+ok 184 - a solo window refuses a sealed value at runtime
+  ---
+  duration_ms: 1.5607
+  ...
+# Subtest: a sealed value refused mid-sentence writes no ledger row for it
+ok 185 - a sealed value refused mid-sentence writes no ledger row for it
+  ---
+  duration_ms: 2.0428
+  ...
+# Subtest: underSolo passes plain speakables through without a ledger row
+ok 186 - underSolo passes plain speakables through without a ledger row
+  ---
+  duration_ms: 1.8559
+  ...
+# Subtest: assertNoTaint throws a LeakError on a tainted string
+ok 187 - assertNoTaint throws a LeakError on a tainted string
+  ---
+  duration_ms: 3.871
+  ...
+# Subtest: assertNoTaint passes clean text through untouched
+ok 188 - assertNoTaint passes clean text through untouched
+  ---
+  duration_ms: 0.5478
+  ...
+# Subtest: assertNoTaint reports every marker it finds, not just the first
+ok 189 - assertNoTaint reports every marker it finds, not just the first
+  ---
+  duration_ms: 0.4899
+  ...
+# Subtest: the tripwire returns void on success — it has no repaired-string return value
+ok 190 - the tripwire returns void on success — it has no repaired-string return value
+  ---
+  duration_ms: 0.1913
+  ...
+# Subtest: say() throws rather than emitting a redacted sentence
+ok 191 - say() throws rather than emitting a redacted sentence
+  ---
+  duration_ms: 0.3169
+  ...
+# Subtest: joinSpoken() throws rather than dropping the offending fragment
+ok 192 - joinSpoken() throws rather than dropping the offending fragment
+  ---
+  duration_ms: 0.3333
+  ...
+# Subtest: the LeakError message names the location and the markers, and carries no plaintext
+ok 193 - the LeakError message names the location and the markers, and carries no plaintext
+  ---
+  duration_ms: 0.3743
+  ...
+# Subtest: spokenError refuses to launder a tainted message
+ok 194 - spokenError refuses to launder a tainted message
+  ---
+  duration_ms: 0.3306
+  ...
+# Subtest: spokenError passes a clean refusal through
+ok 195 - spokenError passes a clean refusal through
+  ---
+  duration_ms: 0.507
+  ...
+# Subtest: assertNoTaintDeep flags a Protected held by reference, before it is ever stringified
+ok 196 - assertNoTaintDeep flags a Protected held by reference, before it is ever stringified
+  ---
+  duration_ms: 0.8911
+  ...
+# Subtest: assertNoTaintDeep walks arrays, nested objects and object keys
+ok 197 - assertNoTaintDeep walks arrays, nested objects and object keys
+  ---
+  duration_ms: 0.4113
+  ...
+# Subtest: assertNoTaintDeep flags a sealed value too
+ok 198 - assertNoTaintDeep flags a sealed value too
+  ---
+  duration_ms: 0.3329
+  ...
+# Subtest: a thrown LeakError is not recoverable into a partially-cleaned result
+ok 199 - a thrown LeakError is not recoverable into a partially-cleaned result
+  ---
+  duration_ms: 0.2477
+  ...
+1..199
+# tests 199
+# suites 0
+# pass 161
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 38
+# duration_ms 12906.4391
+[2mnode:test reported 161 pass, 0 fail, 38 todo (25 of the todo assertions now pass, 13 still fail)[0m
+
+[1mSummary[0m
+[2m────────────────────[0m
+  [32m✓[0m build           1 passed    0 failed  [2m1858 ms[0m
+  [32m✓[0m selftest      160 passed    0 failed  [2m9885 ms[0m
+  [32m✓[0m test/         161 passed    0 failed   38 todo (13 failing)  [2m12958 ms[0m
+
+  [1mknown-issue assertions (TAP "# TODO"):[0m 38 total — [32m25 now pass[0m, [31m13 still fail[0m.
+  [2mnode:test counts these under "# todo" and leaves them out of "# pass" and "# fail", so they are NOT in the total below.[0m
+    [31m✗[0m FINDING F1a: the laundered value passes revealToPrivateChannel, which refuses sealed directly
+    [31m✗[0m FINDING F1b: the laundered value is delivered on the private channel and appears in the inbox
+    [31m✗[0m FINDING F1c: chained with a solo window, a sealed value is SPOKEN ALOUD
+    [31m✗[0m FINDING F1d: the ledger records the laundered reveal under the wrong label and category
+    [31m✗[0m FINDING F2: importing the module grants both reveal capabilities
+    [31m✗[0m FINDING F2a: reveal output carries no marker, so it reaches speech untouched
+    [31m✗[0m FINDING F8: care_summary speaks an item count that reveals how many medications there are
+    [31m✗[0m FINDING F8a: differencing two accounts identifies which categories hold data
+    [31m✗[0m FINDING F4: underSolo speaks from a window belonging to another device
+    [31m✗[0m FINDING F4a: underSolo never checks that the reader is the asker who declared solitude
+    [31m✗[0m FINDING F4b: the ledger attributes the disclosure to the window owner, not the reader
+    [31m✗[0m FINDING F14a: assertNoTaintDeep skips a function-valued toJSON that would run on serialisation
+    [31m✗[0m FINDING F17: /metrics records the handler without its envelope
+
+  [2mmeasured round-trip latency, 40 calls per tool, budget 500 ms:[0m
+  worst p95: [1m12.5 ms[0m (check_adherence [week]); worst single call: [1m13.2 ms[0m; over budget: 0
+
+[32m[1m322 checks passed[0m in 24708 ms, and 13 known-failing assertion(s) excluded from it — listed above

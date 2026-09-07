@@ -1,0 +1,26 @@
+{
+  "tsc": {
+    "file": "term-tsc.mp4",
+    "mode": "emulator",
+    "events": {
+      "type-type": 0.703,
+      "type-enter": 4.443,
+      "type-done": 4.459,
+      "type-exit": 0,
+      "tsc-type": 5.574,
+      "tsc-enter": 13.489,
+      "tsc-done": 15.948,
+      "tsc-exit": 2
+    }
+  },
+  "testall": {
+    "file": "term-testall.mp4",
+    "mode": "emulator",
+    "events": {
+      "testall-type": 0.704,
+      "testall-enter": 2.181,
+      "testall-done": 27.25,
+      "testall-exit": 0
+    }
+  }
+}

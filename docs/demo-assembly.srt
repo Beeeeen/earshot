@@ -183,61 +183,65 @@ you say so, and it'll speak — for five minutes,
 on one device, and it writes that down too.
 
 47
-00:01:48,160 --> 00:01:51,767
+00:01:48,160 --> 00:01:51,546
 Alexa+ + gives an add-on five hundred milliseconds.
 
 48
-00:01:52,184 --> 00:01:55,217
+00:01:51,975 --> 00:01:54,840
 The slowest tool here has a ninety-fifth percentile of
 
 49
-00:01:55,217 --> 00:01:58,551
-eleven — measured on loopback, so the network isn't in
+00:01:54,840 --> 00:01:57,639
+twelve and a half — measured on loopback,
 
 50
-00:01:58,551 --> 00:02:02,014
-that number, but the server's own work never crosses nine.
+00:01:58,043 --> 00:01:59,710
+so the network isn't in that number,
 
 51
-00:02:02,509 --> 00:02:04,371
-Three hundred and seven checks pass.
+00:01:59,957 --> 00:02:02,809
+but the server's own work never crosses ten.
 
 52
-00:02:04,788 --> 00:02:07,809
-Beside them sit thirty-eight findings from an attack suite
+00:02:03,290 --> 00:02:05,126
+Three hundred and twenty-two checks pass.
 
 53
-00:02:07,822 --> 00:02:10,296
-whose only job was to make this thing lie.
+00:02:05,556 --> 00:02:08,603
+Beside them sit thirty-eight findings from an attack suite
 
 54
-00:02:10,725 --> 00:02:12,001
-Twenty-five are closed.
+00:02:08,616 --> 00:02:11,337
+whose only job was to make this thing lie.
 
 55
-00:02:12,470 --> 00:02:16,389
-Thirteen are still failing, and the test runner prints them by name.
+00:02:11,754 --> 00:02:13,017
+Twenty-five are closed.
 
 56
-00:02:16,888 --> 00:02:19,202
-It can't stop someone reading over your shoulder.
+00:02:13,499 --> 00:02:17,340
+Thirteen are still failing, and the test runner prints them by name.
 
 57
-00:02:19,628 --> 00:02:23,471
-It doesn't do voice identification — Amazon doesn't promise an
+00:02:17,848 --> 00:02:20,162
+It can't stop someone reading over your shoulder.
 
 58
-00:02:23,471 --> 00:02:26,024
-add-on that context, so we didn't pretend to have it.
+00:02:20,588 --> 00:02:24,431
+It doesn't do voice identification — Amazon doesn't promise an
 
 59
-00:02:26,436 --> 00:02:27,939
-And it isn't a compliance product.
+00:02:24,431 --> 00:02:26,984
+add-on that context, so we didn't pretend to have it.
 
 60
-00:02:28,364 --> 00:02:29,907
-All of that is in the readme,
+00:02:27,396 --> 00:02:28,899
+And it isn't a compliance product.
 
 61
-00:02:30,133 --> 00:02:31,609
+00:02:29,324 --> 00:02:30,867
+All of that is in the readme,
+
+62
+00:02:31,093 --> 00:02:32,569
 because you'd have found it anyway.
