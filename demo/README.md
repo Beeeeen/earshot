@@ -77,15 +77,15 @@ second fetch, with a second credential, to a second endpoint.
 
 ### Known server-side issue
 
-The **authenticated** `/mcp` success path returns no CORS headers at all.
-`src/server.ts` builds them in `corsHeaders()` and applies them to its own
-`sendJson` replies — the 401 has them — but once a request is handed to
-`StreamableHTTPServerTransport` the SDK writes the response and they are lost.
-A browser therefore cannot read the reply, nor `mcp-session-id`.
-
-Fix is one line upstream: set them on `res` before handing off to the
-transport. Until then the demo proxies through its own origin. Alexa+ itself
-talks server-to-server and will not care, but any browser MCP client will.
+**Fixed.** The authenticated `/mcp` success path used to return no CORS headers:
+`corsHeaders()` was applied to `sendJson` replies — the 401 had them — but once a
+request was handed to `StreamableHTTPServerTransport` the SDK wrote the response
+itself and they were lost, so a browser could not read the reply or
+`mcp-session-id`. The fix landed upstream in `src/server.ts`: headers are set
+directly on `res` before any dispatch, so they survive whatever `writeHead` the
+SDK does later. The demo still proxies through its own origin (that choice
+stands regardless — Alexa+ talks server-to-server and will not care either way),
+but a plain browser MCP client no longer needs to.
 
 ### If the badge says `LIVE (shape unknown)`
 
