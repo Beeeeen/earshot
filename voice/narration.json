@@ -1,7 +1,7 @@
 {
   "voice": "en-US-AndrewMultilingualNeural",
   "rate": "-4%",
-  "note": "Target 2:20, hard ceiling 3:00 (Amazon rule). Cold open on the room -- the premise has to land before anything is explained, because the whole idea only makes sense once you picture who else is standing there. Numbers in beat 09 are measured (npm run test:all, 2026-09-04): 279 checks, worst p95 11.1 ms, server-side max 8.9 ms, budget 500 ms, 0 over budget. Re-verify before recording -- test/ is still growing.",
+  "note": "Target 2:20, hard ceiling 3:00 (Amazon rule). Cold open on the room -- the premise has to land before anything is explained, because the whole idea only makes sense once you picture who else is standing there. Numbers in beat 09 are measured (npm run test:all, 2026-09-07, the run filmed in docs/broll/term-testall.mp4 and saved to docs/broll/test-all.txt): 322 checks passed, 38 known-issue assertions of which 25 pass and 13 still fail by name, worst round-trip p95 12.5 ms (loopback p95 moves a couple of ms between runs -- 11.4 and 13.1 in the runs before -- so the line quotes the filmed run), handler P95 8.158 ms in the committed test/latency/RESULTS.md (the latency suite rewrites that file on every run; the filmed run measured 9.070, so the line says 'under ten', which is the README's claim and true of both), budget 500 ms, 0 over budget. Re-verify before recording -- test/ is still growing. Regenerate one line with `npm run voice -- --beat 09-cost-and-limits`.",
   "beats": [
     {
       "id": "01-room",
@@ -72,7 +72,7 @@
     {
       "id": "09-cost-and-limits",
       "footage": "The measured latency table with the 500 ms budget line, then the test runner's 279 checks passed, then the README's 'What this does not do' section.",
-      "text": "Alexa+ gives an add-on five hundred milliseconds. The slowest tool here has a ninety-fifth percentile of eleven — measured on loopback, so the network isn't in that number, but the server's own work never crosses nine. Three hundred and seven checks pass. Beside them sit thirty-eight findings from an attack suite whose only job was to make this thing lie. Twenty-five are closed. Thirteen are still failing, and the test runner prints them by name.",
+      "text": "Alexa+ gives an add-on five hundred milliseconds. The slowest tool here has a ninety-fifth percentile of twelve and a half — measured on loopback, so the network isn't in that number, but the server's own work never crosses ten. Three hundred and twenty-two checks pass. Beside them sit thirty-eight findings from an attack suite whose only job was to make this thing lie. Twenty-five are closed. Thirteen are still failing, and the test runner prints them by name.",
       "rate": "-4%"
     },
     {

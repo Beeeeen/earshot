@@ -192,3 +192,34 @@ node demo/tools/render-icons.mjs       # -> addon-package/icons/  (6 sizes x 2 t
 node demo/tools/render-carousel.mjs    # -> addon-package/carousel-1-600x900.png + assets.json
 node demo/tools/render-devpost.mjs     # -> docs/assets/ thumbnail + 5 captioned stills
 ```
+
+## Filming the video
+
+The order is fixed: voice first, then picture cut to the voice.
+
+```
+npm run voice                          # voice/*.mp3 + word timings; the clock everything else reads
+npm run record                         # docs/broll/ui-take.mp4 + dana-take.mp4: the simulator, live server, one continuous take
+node demo/tools/record-terminal.mjs    # docs/broll/term-tsc.mp4 + term-testall.mp4: a real Windows Terminal, off the screen
+node demo/tools/render-cards.mjs       # docs/broll/card-*.mp4: latency, README limits, repo URL — rendered from the files they quote
+npm run assemble                       # docs/demo-assembly.mp4
+npm run captions                       # docs/demo-assembly.srt
+```
+
+`record.mjs` schedules every action at the second a narrated word begins
+(`scripts/lib/timeline.mjs`), so the take lies under the narration from t = 0.
+It starts its own MCP server so no state leaks in from an earlier take, films
+through the DevTools screencast (the physical display can be any size), and
+throws the take away if a protected value ever reached the room pane. Dana's
+take links her own account; the answer on screen is what the server says to her
+token.
+
+`record-terminal.mjs` opens Windows Terminal fullscreen on the second monitor
+and grabs that region of the desktop with a DPI-aware copy of ffmpeg (a
+window-title grab of Windows Terminal is black, and a DPI-unaware grab is a
+downscaled blur). The shell types its own command; nothing is ever sent to
+whichever window you happen to have focused. `npm run test:all` is tee'd to
+`docs/broll/test-all.txt`, and the latency card quotes that file, so the number
+on the card is the number in the footage.
+
+The cut itself is the edit decision list at the bottom of `scripts/assemble.mjs`.

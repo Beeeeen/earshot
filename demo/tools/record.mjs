@@ -1,38 +1,43 @@
 /**
- * Records one clip per narration beat, each held for exactly as long as its
- * voice line runs.
+ * Films the two-pane simulator as one continuous take, on the narration's clock.
  *
- *   npm run voice     # writes voice/durations.json
- *   npm run record    # -> docs/broll/01-room.webm, ...
+ *   npm run voice      # once; the clips and their word timings are the clock
+ *   npm run record     # -> docs/broll/ui-take.mp4, dana-take.mp4, takes.json
  *
- * Editing then has no timing work in it: clip N goes under narration N. This
- * ordering is not a preference. Recording first and fitting narration to the
- * footage afterwards always reads as padded, because the words end and the
- * picture keeps going.
+ * Every action below is scheduled at the absolute second a narrated word
+ * begins (scripts/lib/timeline.mjs), so the assembler can lay this take under
+ * the narration from t = 0 and the picture lands where the words do. The old
+ * recorder shot one clip per beat by replaying the page to a state; that put
+ * the solo window on screen half a minute before the sentence about it.
  *
  * The tool calls are real: the page drives a live MCP session over Streamable
- * HTTP against the server in src/, and the private pane is fetched from /inbox
- * with the asker's own token. A script picks the calls rather than a model,
- * which is why the narration never claims otherwise.
+ * HTTP against a FRESH server in src/, and the private pane is fetched from
+ * /inbox with the asker's own token. A script picks the calls rather than a
+ * model, which is why the narration never claims otherwise.
  *
- *   --scripted    record against fixtures instead of the live server
- *   --beat <id>   re-record one beat only
+ * Two takes:
+ *   sarah   the whole story, beats 1-8, Sarah's linked account
+ *   dana    the aide's own linked account asking on the same device: what her
+ *           token is entitled to, in the server's words. Cut in under beat 8.
+ *
+ * The recorder refuses to keep a take in which a protected value reached the
+ * room pane, and refuses to film the scripted fallback at all.
+ *
+ *   --take sarah|dana   film one of them only
  */
-import { mkdir, readFile, stat, unlink } from 'node:fs/promises';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-
-const run = promisify(execFile);
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { chromePath, puppeteer, serveDemo, openDemo, ROOT } from './lib/browser.mjs';
+import { screencast, framesToVideo } from './lib/screencast.mjs';
+import { loadTimeline } from '../../scripts/lib/timeline.mjs';
 
-/* Start our own MCP server so every recording gets a FRESH store.
-   `report_symptom` appends to store.symptoms and the store outlives a page
-   reset, so recording twice against one long-lived server puts the same
-   symptom on the card five times -- which is what shipped in the first cut and
-   made the frame that lingers longest look like fabricated data. A recording
-   must not inherit state from an earlier take. */
+const OUT = join(ROOT, 'docs', 'broll');
+const WORK = join(ROOT, 'docs', '.assembly', 'frames');
+const SPEED = 0.4; // the page's own pacing; slow enough that the in-flight status is readable
+
+/* A recording must not inherit state from an earlier take: a solo window is
+   server state and outlives a page reset, and every /inbox delivery accumulates. */
 async function freshServer(port) {
   const child = spawn(process.execPath, ['dist/server.js', '--demo'], {
     cwd: ROOT, env: { ...process.env, PORT: String(port) }, stdio: ['ignore', 'pipe', 'pipe'],
@@ -48,156 +53,178 @@ async function freshServer(port) {
   return { url, stop: () => child.kill() };
 }
 
-const argv = process.argv.slice(2);
-const only = argv.includes('--beat') ? argv[argv.indexOf('--beat') + 1] : null;
-const scripted = argv.includes('--scripted');
-const OUT = join(ROOT, 'docs', 'broll');
+/* Staging only. Which pane is on screen when is presentation; what is written
+   in the panes is never touched. */
+const STAGE_CSS = `
+  .stage { transition: grid-template-columns .9s cubic-bezier(.22,.7,.24,1), column-gap .9s cubic-bezier(.22,.7,.24,1); }
+  .gutter { overflow: hidden; min-width: 0; }
+  .gutter, .phone-pane { transition: opacity .55s ease; }
+  body.stage-open .stage { grid-template-columns: minmax(0,1fr) 0 0; column-gap: 0; }
+  body.stage-open .gutter, body.stage-open .phone-pane { opacity: 0; }
+  .app { transition: row-gap .9s cubic-bezier(.22,.7,.24,1); }
+  .strip { overflow: hidden; transition: height .9s cubic-bezier(.22,.7,.24,1), opacity .6s ease; }
+  body.strip-hidden .strip { height: 0; opacity: 0; }
+  body.strip-hidden .app { row-gap: 0; }
+  body.pulse .presence li { animation: chipPulse 1.5s ease-out both; }
+  body.pulse .presence li:nth-child(2) { animation-delay: .22s; }
+  body.pulse .presence li:nth-child(3) { animation-delay: .44s; }
+  body.pulse .presence li:nth-child(4) { animation-delay: .66s; }
+  @keyframes chipPulse {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.06); box-shadow: 0 0 0 4px var(--amber-wash); border-color: var(--amber); }
+    100% { transform: scale(1); }
+  }
+`;
 
-const spec = JSON.parse(await readFile(join(ROOT, 'voice', 'narration.json'), 'utf8'));
-let durations = {};
-try {
-  durations = JSON.parse(await readFile(join(ROOT, 'voice', 'durations.json'), 'utf8'));
-} catch {
-  console.error('No voice/durations.json - run `npm run voice` first so each clip\n' +
-                'can be held for the real length of its line. Refusing to guess.');
-  process.exit(1);
+/* Timestamps of what the page did, read back after the take, so the cut can be
+   placed on the moment a card actually landed rather than on when it was asked for. */
+const OBSERVE = () => {
+  window.__ev = [];
+  const push = (what) => window.__ev.push({ what, t: performance.now() });
+  const now = document.getElementById('now');
+  new MutationObserver(() => push('now:' + now.dataset.k)).observe(now, { attributes: true, attributeFilter: ['data-k'] });
+  for (const id of ['transcript', 'cards', 'ledger']) {
+    const el = document.getElementById(id);
+    new MutationObserver(() => push(id + ':' + el.children.length)).observe(el, { childList: true });
+  }
+  for (const id of ['raw', 'solo']) {
+    const el = document.getElementById(id);
+    new MutationObserver(() => push(id + ':' + (el.hidden ? 'hidden' : 'shown'))).observe(el, { attributes: true, attributeFilter: ['hidden'] });
+  }
+};
+
+async function audit(page) {
+  return page.evaluate(() => {
+    const S = window.EARSHOT_SCENARIO;
+    const corpus = window.EarshotApp.roomCorpus();
+    const rx = (t) => new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    return {
+      breached: window.EarshotApp.audit(),
+      counter: document.getElementById('counter').textContent.trim(),
+      hits: S.PROTECTED.filter((p) => [p.value].concat(p.alts || []).some((t) => rx(t).test(corpus))).map((p) => p.label),
+    };
+  });
 }
 
-/* -------------------------------------------------------------- SHOT LIST --
-   Narration beats and scenario beats are different sequences, so the mapping is
-   explicit rather than positional. `hold` is added on top of the narration
-   length: a beat whose last half-second is a static frame cuts cleanly, and a
-   beat that ends the instant the words do does not.                          */
-const SHOTS = [
-  { id: '01-room',            goto: 0, hold: 0.4, note: 'left pane only, presence chips, nothing has happened' },
-  { id: '02-premise',         goto: 0, hold: 0.4, note: 'hold on the room while the premise lands' },
-  { id: '03-third-option',    goto: 0, hold: 0.6, note: 'right pane and the two channel labels' },
-  { id: '04-ordinary',        goto: 1, hold: 0.5, note: 'check_adherence: spoken answer AND the card' },
-  { id: '05-shift',           goto: 1, hold: 1.2, note: 'hold on the split - the frame people remember' },
-  { id: '06-verify',          goto: 2, hold: 0.8, note: 'the injection, then the byte-identical reply' },
-  { id: '07-compile',         goto: 9, hold: 0.6, verify: 'Furosemide', note: 'search the transcript: 0 results' },
-  { id: '08-identity',        goto: 3, hold: 0.5, advance: 5, note: 'bystander, then who_can_see, symptom, sealed, solo open+close' },
-  { id: '09-cost-and-limits', goto: 9, hold: 0.5, note: 'ledger and the 0; latency table cut in at edit' },
-  { id: '10-honest',          goto: 9, hold: 1.0, note: 'README limits and the repo URL cut in at edit' },
-];
+async function film(browser, server, mcp, take, T) {
+  const person = take === 'dana' ? '&person=dana' : '';
+  const query = `server=${encodeURIComponent(mcp.url + '/mcp')}&speed=${SPEED}&still=0${person}`;
+  const { page, errors } = await openDemo(browser, server.url, query);
 
-const secondsFor = (id) => {
-  const d = durations[id];
-  if (typeof d !== 'number') throw new Error(`no measured duration for narration beat "${id}"`);
-  return d;
-};
-const sleep = (s) => new Promise((r) => setTimeout(r, Math.round(s * 1000)));
+  const mode = await page.evaluate(() => window.EarshotAdapter?.state?.mode ?? 'unknown');
+  if (mode !== 'live') {
+    throw new Error(`the page is in "${mode}" mode; this would film fixtures while the narration says the calls are real`);
+  }
+  await page.addStyleTag({ content: STAGE_CSS });
+  await page.evaluate(OBSERVE);
 
+  const plan = [];
+  const at = (t, name, fn) => plan.push({ t, name, fn });
+  const evalIn = (fn) => () => page.evaluate(fn);
+  let end;
+
+  if (take === 'sarah') {
+    await page.evaluate(() => document.body.classList.add('stage-open', 'strip-hidden'));
+    // 1. The room. Her question lands on "asks"; the spoken answer follows it.
+    at(T.cue('01-room', 'asks') + 0.25, 'ask: did Mom take her medication', evalIn(() => { window.EarshotApp.next(); }));
+    // 2. "...heard by whoever is standing there": the presence chips pulse.
+    at(T.cue('02-premise', 'whoever') - 0.25, 'presence pulse', evalIn(() => document.body.classList.add('pulse')));
+    // 3. "Earshot does the third thing": the phone slides in, card already on it.
+    at(T.cue('03-third-option', 'Earshot'), 'phone pane in', evalIn(() => document.body.classList.remove('stage-open')));
+    // 4. The ledger and the counter rise with "Most questions aren't sensitive".
+    at(T.beat('04-ordinary').start + 0.25, 'strip in', evalIn(() => document.body.classList.remove('strip-hidden')));
+    // 5. "Now ask it to say the drug name": the injected call goes on the wire.
+    at(T.beat('05-shift').start + 0.15, 'ask: say the medication name (injected _meta)', evalIn(() => { window.EarshotApp.next(); }));
+    // 7. "Everything it has ever said out loud is searchable": type the drug name.
+    at(T.beat('07-compile').start + 0.15, 'search transcript for the medication', evalIn(() => {
+      window.EarshotApp.state.cursor = 8; window.EarshotApp.next();
+    }));
+    // 8. Back from the terminal; then "when you really are alone".
+    at(T.beat('08-identity').start - 0.15, 'close raw overlay', evalIn(() => window.EarshotApp.closeRaw()));
+    at(T.cue('08-identity', 'And'), 'open_solo_window', evalIn(() => {
+      window.EarshotApp.state.cursor = 6; window.EarshotApp.next();
+    }));
+    end = T.beat('08-identity').end + 0.6;
+  } else {
+    // Dana's own linked session. The question is the one src/demo.ts gives her
+    // in scene 4; the answer is whatever the server says to her token.
+    await page.evaluate(() => {
+      const chan = document.querySelector('.phone-pane .chan');
+      for (const n of chan.childNodes) if (n.nodeType === 3 && n.textContent.trim()) n.textContent = " Dana's phone";
+      document.querySelector('#v-phone + span').childNodes[0].textContent = "on Dana's phone";
+      for (const li of document.querySelectorAll('.presence li')) li.classList.toggle('asker', li.textContent.includes('Dana'));
+      const S = window.EARSHOT_SCENARIO;
+      S.beats[6].ask = { who: 'dana', text: 'Alexa, send me her care summary so I know what to give her.' };
+    });
+    at(0.4, 'ask: care summary (Dana token)', evalIn(() => {
+      window.EarshotApp.state.cursor = 5; window.EarshotApp.next();
+    }));
+    end = 9.0;
+  }
+
+  const rec = await screencast(page, join(WORK, take));
+  await rec.start();
+  // Pin the page's clock to the recorder's AFTER start(): the screenshot inside
+  // start() takes half a second, and reading the page clock before it would
+  // report every event that much late.
+  const pageT0 = await page.evaluate(() => performance.now());
+  const recAtT0 = rec.now();
+  for (const step of plan) {
+    await rec.until(step.t);
+    await step.fn();
+    console.log(`  ${rec.now().toFixed(2).padStart(7)}s  ${step.name}`);
+  }
+  await rec.until(end);
+  const { frames, end: recorded } = await rec.stop();
+
+  const events = (await page.evaluate(() => window.__ev))
+    .map((e) => ({ what: e.what, t: Number(((e.t - pageT0) / 1000 + recAtT0).toFixed(3)) }));
+  const probe = await audit(page);
+  await page.close();
+
+  const bad = probe.breached > 0 || probe.hits.length > 0 || probe.counter !== '0';
+  console.log(`  ${bad ? 'LEAK' : ' ok '}  ${take}: ${frames.length} frames over ${recorded.toFixed(1)}s, counter=${probe.counter}` +
+    (probe.hits.length ? `  SPOKEN: ${probe.hits.join(', ')}` : '') +
+    (errors.length ? `  page errors: ${errors.length}` : ''));
+  if (bad) throw new Error('a protected value reached the room pane; not keeping this take');
+
+  const file = `${take === 'sarah' ? 'ui' : 'dana'}-take.mp4`;
+  await framesToVideo(frames, recorded, join(OUT, file));
+  return { file, end: recorded, plan: plan.map((p) => ({ name: p.name, at: p.t })), events };
+}
+
+const argv = process.argv.slice(2);
+const only = argv.includes('--take') ? argv[argv.indexOf('--take') + 1] : null;
+const takes = only ? [only] : ['sarah', 'dana'];
+
+const T = loadTimeline(ROOT);
 await mkdir(OUT, { recursive: true });
-const mcp = scripted ? null : await freshServer(8791);
-if (mcp) console.log(`  fresh MCP server at ${mcp.url} -- no state from an earlier take
-`);
 const server = await serveDemo(5211);
 const pptr = await puppeteer();
 const browser = await pptr.launch({
   executablePath: chromePath(),
-  headless: false, // screencast needs a real window
-  args: ['--no-sandbox', '--force-device-scale-factor=1', '--hide-scrollbars',
-         '--font-render-hinting=none', '--window-size=1928,1140'],
+  headless: true,
+  args: ['--no-sandbox', '--force-device-scale-factor=1', '--hide-scrollbars', '--font-render-hinting=none'],
+  defaultViewport: { width: 1920, height: 1080, deviceScaleFactor: 1 },
 });
 
-const shots = only ? SHOTS.filter((s) => s.id === only) : SHOTS;
-if (only && shots.length === 0) {
-  console.error(`No shot called "${only}". Known: ${SHOTS.map((s) => s.id).join(', ')}`);
-  process.exit(1);
-}
+let manifest = {};
+try { manifest = JSON.parse(await readFile(join(OUT, 'takes.json'), 'utf8')); } catch {}
 
-let mode = null;
 try {
-  for (const shot of shots) {
-    const secs = secondsFor(shot.id);
-    const query = `${scripted ? 'mode=scripted&' : `server=${encodeURIComponent(mcp.url + '/mcp')}&`}speed=1&still=${shot.goto}`;
-    const { page, errors } = await openDemo(browser, server.url, query);
-
-    if (mode === null) {
-      mode = await page.evaluate(() => window.EarshotAdapter?.state?.mode ?? 'unknown');
-      if (!scripted && mode !== 'live') {
-        console.error(
-          `\nThe page is in "${mode}" mode, so this would record fixtures while the\n` +
-          `narration says the calls are real. Start the server first:\n` +
-          `    npm run build && node dist/server.js --demo\n` +
-          `Or pass --scripted if you genuinely mean to record the fallback.`);
-        process.exit(1);
-      }
-    }
-
-    const recorder = await page.screencast({ path: join(OUT, `${shot.id}.webm`) });
-    if (shot.advance) {
-      /* Several scenario beats under one narration line. Advance with next(),
-         never gotoBeat(): gotoBeat resets the *page* and replays from zero,
-         but a solo window is state on the *server* and outlives that reset —
-         so a replay re-runs the early beats with the window already open, and
-         the server then speaks, correctly, things the narration says it never
-         speaks. Moving forward only cannot hit that. */
-      const each = secs / (shot.advance + 1);
-      await sleep(each);
-      for (let i = 0; i < shot.advance; i++) {
-        await page.evaluate(() => window.EarshotApp.next());
-        await sleep(each);
-      }
-    } else if (shot.verify) {
-      await sleep(secs * 0.45);
-      await page.evaluate((q) => window.EarshotApp.verify(q), shot.verify);
-      await sleep(secs * 0.55);
-    } else {
-      await sleep(secs);
-    }
-    await sleep(shot.hold);
-    await recorder.stop();
-
-    /* CDP screencast only emits a frame when something changes, so a beat that
-       is deliberately still -- the room before anything happens, the hold on
-       the split -- produces an empty file. Those beats are exactly the ones the
-       edit needs most, so fall back to a still held for the same duration
-       rather than losing the shot. */
-    const clip = join(OUT, `${shot.id}.webm`);
-    let framesCaptured = true;
-    if (await stat(clip).then((f) => f.size === 0).catch(() => true)) {
-      framesCaptured = false;
-      const png = join(OUT, `${shot.id}.png`);
-      await page.screenshot({ path: png });
-      await unlink(clip).catch(() => {});
-      await run('ffmpeg', ['-y', '-loglevel', 'error', '-loop', '1', '-i', png,
-        '-t', String(secs + shot.hold), '-r', '30', '-c:v', 'libvpx-vp9',
-        '-b:v', '2M', '-pix_fmt', 'yuv420p', clip]);
-      await unlink(png).catch(() => {});
-    }
-
-    const probe = await page.evaluate(() => {
-      const S = window.EARSHOT_SCENARIO;
-      const corpus = window.EarshotApp.roomCorpus();
-      return {
-        counter: document.getElementById('counter').textContent,
-        hits: S.PROTECTED.filter((p) => [p.value].concat(p.alts || []).some(
-          (t) => new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(corpus))).map((p) => p.label),
-      };
-    });
-    await page.close();
-
-    const bad = probe.hits.length > 0 || probe.counter.trim() !== '0';
-    console.log(
-      `  ${bad ? 'LEAK' : ' ok '}  ${shot.id.padEnd(20)} ${secs.toFixed(1)}s + ${shot.hold}s` +
-      `  counter=${probe.counter.trim()}${framesCaptured ? '' : '  [still]'}` +
-      (probe.hits.length ? `  SPOKEN: ${probe.hits.join(', ')}` : '') +
-      (errors.length ? `  page errors: ${errors.length}` : ''));
-    if (bad) {
-      console.error('\nA protected value reached the room pane. Not recording over this.');
-      process.exit(1);
+  for (const take of takes) {
+    const mcp = await freshServer(8791);
+    console.log(`\n${take}: fresh MCP server at ${mcp.url}`);
+    try {
+      manifest[take === 'sarah' ? 'ui' : 'dana'] = await film(browser, server, mcp, take, T);
+    } finally {
+      mcp.stop();
     }
   }
+  await writeFile(join(OUT, 'takes.json'), JSON.stringify(manifest, null, 2) + '\n');
+  console.log(`\nwrote ${join(OUT, 'takes.json')}`);
 } finally {
   await browser.close();
-  await server.close?.();
-  mcp?.stop();
+  await server.stop?.();
 }
-
-const total = shots.reduce((a, s) => a + secondsFor(s.id) + s.hold, 0);
-console.log(`\n${shots.length} clip(s) in ${OUT}`);
-console.log(`footage ${Math.floor(total / 60)}:${String(Math.round(total % 60)).padStart(2, '0')}` +
-            `  (narration ${spec.beats.length} beats; hard limit 3:00)`);
 process.exit(0); // puppeteer keeps a handle open on Windows

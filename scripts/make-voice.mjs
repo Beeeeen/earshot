@@ -23,6 +23,23 @@ const spec = JSON.parse(readFileSync(join(VOICE_DIR, 'narration.json'), 'utf8'))
 mkdirSync(VOICE_DIR, { recursive: true });
 
 /**
+ *   npm run voice -- --beat 09-cost-and-limits
+ *
+ * Re-synthesises only the named beat(s). A number in one line changed, so one
+ * line is re-read; every other clip stays byte-identical, and the footage
+ * already cut to those clips stays in sync.
+ */
+const argv = process.argv.slice(2);
+const only = new Set();
+for (let i = 0; i < argv.length; i++) if (argv[i] === '--beat' && argv[i + 1]) only.add(argv[++i]);
+let previous = {};
+try {
+  previous = JSON.parse(readFileSync(join(VOICE_DIR, 'durations.json'), 'utf8'));
+} catch {
+  if (only.size) throw new Error('--beat needs an existing voice/durations.json; run once without it');
+}
+
+/**
  * The clearest tell of a synthesised read is that every line moves at the same
  * speed. A person slows for the line that matters and picks up through the
  * connective tissue, so each beat carries its own rate and the delivery has a
@@ -62,6 +79,18 @@ for (const beat of [...spec.beats, ...(spec.optional ?? [])]) {
   const txt = join(VOICE_DIR, `${beat.id}.txt`);
   const mp3 = join(VOICE_DIR, `${beat.id}.mp3`);
   const timings = join(VOICE_DIR, `${beat.id}.timings.json`);
+  const isOptional = (spec.optional ?? []).some((o) => o.id === beat.id);
+
+  if (only.size && !only.has(beat.id)) {
+    if (typeof previous[beat.id] !== 'number') {
+      if (isOptional) continue;
+      throw new Error(`no existing clip for ${beat.id}; run npm run voice without --beat`);
+    }
+    if (!isOptional) total += previous[beat.id];
+    results.push({ ...beat, seconds: previous[beat.id], isOptional });
+    console.log(`  ${beat.id.padEnd(14)} ${previous[beat.id].toFixed(1)}s   kept`);
+    continue;
+  }
   writeFileSync(txt, beat.text, 'utf8');
 
   const raw = join(VOICE_DIR, `${beat.id}.raw.mp3`);
@@ -76,7 +105,6 @@ for (const beat of [...spec.beats, ...(spec.optional ?? [])]) {
   rmSync(raw, { force: true });
 
   const seconds = durationOf(mp3);
-  const isOptional = (spec.optional ?? []).some((o) => o.id === beat.id);
   if (!isOptional) total += seconds;
   results.push({ ...beat, seconds, isOptional });
   console.log(`  ${beat.id.padEnd(14)} ${seconds.toFixed(1)}s   rate ${rateFor(beat)}`);
@@ -106,24 +134,17 @@ const sheet = [
   '',
   '## What you still have to shoot',
   '',
-  'Nothing. Every required beat is recorded in `docs/broll/`. The optional swap',
-  'above is the only thing a camera would add.',
+  'Nothing. `npm run record` shoots the two-pane simulator against a live server',
+  'as one continuous take on this clock, `node demo/tools/record-terminal.mjs`',
+  'films the real terminal shots, and `node demo/tools/render-cards.mjs` renders',
+  'the latency and README cards from the files they quote.',
   '',
   '## Assembling',
   '',
-  '`npm run assemble` already does this and writes `docs/demo-assembly.mp4`:',
-  'every beat in order, narration laid under it, and a card standing in for each',
-  'shot that is yours. Watch that first — the pacing of the finished video is',
-  'already in it.',
-  '',
-  'To finish by hand instead:',
-  '',
-  '1. Lay the nine narration clips end to end, in order.',
-  '2. Put `docs/broll/<id>.webm` under its own clip. Each was recorded to the',
-  '   measured length of that line, so nothing needs stretching.',
-  '3. Replace the three cards with your footage, cut to the same length.',
-  '4. Word-level timings are in `voice/*.timings.json` if you want to cut on a',
-  '   specific word.',
+  '`npm run assemble` cuts all of that against the word timings in',
+  '`voice/*.timings.json` and writes `docs/demo-assembly.mp4`; `npm run captions`',
+  'writes the matching `.srt`. The edit decision list is in `scripts/assemble.mjs`,',
+  'and every cut point in it is a narrated word, not a number.',
   '',
 ].join('\n');
 
