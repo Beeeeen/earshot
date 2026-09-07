@@ -10,16 +10,16 @@ private-channel delivery, both taint scans, and the ledger write.
 
 | Tool | min | median | P95 | max | over 500 ms |
 |---|---:|---:|---:|---:|---:|
-| care_summary | 0.170 | 0.229 | 0.591 | 1.619 | 0 |
-| check_adherence | 4.967 | 5.821 | 11.721 | 15.606 | 0 |
-| disclosure_ledger | 1.175 | 1.677 | 3.468 | 4.848 | 0 |
-| log_dose | 0.734 | 1.308 | 2.418 | 6.522 | 0 |
-| next_dose | 0.066 | 0.110 | 0.245 | 0.517 | 0 |
-| open_solo_window | 0.064 | 0.134 | 0.296 | 0.473 | 0 |
-| report_symptom | 0.198 | 0.297 | 0.700 | 2.020 | 0 |
-| who_can_see | 0.016 | 0.022 | 0.045 | 0.136 | 0 |
+| care_summary | 0.173 | 0.205 | 0.371 | 1.819 | 0 |
+| check_adherence | 5.409 | 6.552 | 8.158 | 206.027 | 0 |
+| disclosure_ledger | 1.188 | 1.541 | 2.374 | 4.857 | 0 |
+| log_dose | 0.782 | 1.089 | 1.603 | 2.544 | 0 |
+| next_dose | 0.070 | 0.082 | 0.178 | 0.432 | 0 |
+| open_solo_window | 0.066 | 0.076 | 0.163 | 0.452 | 0 |
+| report_symptom | 0.204 | 0.254 | 0.488 | 2.412 | 0 |
+| who_can_see | 0.016 | 0.019 | 0.029 | 0.050 | 0 |
 
-**Slowest tool at P95: `check_adherence` at 11.721 ms** — 2.3% of the 500 ms platform budget.
+**Slowest tool at P95: `check_adherence` at 8.158 ms** — 1.6% of the 500 ms platform budget.
 
 ## What is and is not in these numbers
 
@@ -41,7 +41,7 @@ returning a `CallToolResult`:
 - JSON serialisation of the response — measured separately below
 - any time the model spends deciding to call the tool, or speaking the answer
 
-The platform documentation does not state whether its 500 ms ceiling includes the network hop. These figures are a **floor** for the round trip, and the honest claim is the one about headroom: the server-side work is 11.721 ms at worst, so 488.279 ms of the budget remains for everything this project does not control.
+The platform documentation does not state whether its 500 ms ceiling includes the network hop. These figures are a **floor** for the round trip, and the honest claim is the one about headroom: the server-side work is 8.158 ms at worst, so 491.842 ms of the budget remains for everything this project does not control.
 
 ## Response serialisation (ms)
 
@@ -49,14 +49,14 @@ The platform documentation does not state whether its 500 ms ceiling includes th
 
 | Tool | min | median | P95 | max |
 |---|---:|---:|---:|---:|
-| care_summary | 0.007 | 0.009 | 0.022 | 0.115 |
-| check_adherence | 0.007 | 0.010 | 0.029 | 1.032 |
-| disclosure_ledger | 0.006 | 0.008 | 0.022 | 0.201 |
-| log_dose | 0.006 | 0.011 | 0.022 | 3.443 |
-| next_dose | 0.004 | 0.006 | 0.011 | 0.029 |
-| open_solo_window | 0.006 | 0.010 | 0.017 | 0.042 |
-| report_symptom | 0.006 | 0.008 | 0.019 | 0.072 |
-| who_can_see | 0.006 | 0.008 | 0.016 | 0.099 |
+| care_summary | 0.007 | 0.009 | 0.014 | 0.068 |
+| check_adherence | 0.010 | 0.013 | 0.020 | 0.049 |
+| disclosure_ledger | 0.006 | 0.008 | 0.019 | 0.057 |
+| log_dose | 0.007 | 0.008 | 0.015 | 0.112 |
+| next_dose | 0.004 | 0.005 | 0.008 | 0.128 |
+| open_solo_window | 0.007 | 0.008 | 0.023 | 0.063 |
+| report_symptom | 0.007 | 0.008 | 0.013 | 0.071 |
+| who_can_see | 0.006 | 0.007 | 0.018 | 0.048 |
 
 ## Caveat: what `GET /metrics` reports is not this number
 
@@ -66,14 +66,14 @@ taint scans, the private-channel delivery and the ledger write. The gap at P95:
 
 | Tool | run only (P95) | full handler (P95) | omitted |
 |---|---:|---:|---:|
-| care_summary | 0.558 | 0.591 | 0.033 |
-| check_adherence | 11.635 | 11.721 | 0.086 |
-| disclosure_ledger | 3.407 | 3.468 | 0.061 |
-| log_dose | 2.381 | 2.418 | 0.037 |
-| next_dose | 0.233 | 0.245 | 0.012 |
-| open_solo_window | 0.281 | 0.296 | 0.015 |
-| report_symptom | 0.650 | 0.700 | 0.050 |
-| who_can_see | 0.033 | 0.045 | 0.012 |
+| care_summary | 0.346 | 0.371 | 0.025 |
+| check_adherence | 8.091 | 8.158 | 0.067 |
+| disclosure_ledger | 2.353 | 2.374 | 0.021 |
+| log_dose | 1.587 | 1.603 | 0.016 |
+| next_dose | 0.169 | 0.178 | 0.009 |
+| open_solo_window | 0.156 | 0.163 | 0.007 |
+| report_symptom | 0.465 | 0.488 | 0.023 |
+| who_can_see | 0.023 | 0.029 | 0.006 |
 
 Both are far inside budget, so this is a reporting-accuracy issue rather than a performance one.
 

@@ -50,9 +50,10 @@ What it never does is say a protected value out loud.
 Ask whether she took her medication and it says yes, on time, next one at six.
 That is what the person in the room actually needed, and none of it is sensitive.
 Ask what she is taking, and it does not refuse. It answers on the asker's own
-device — the drug, the dose, the prescriber, rendered as a card in the Alexa+
-conversation view — while the spoken channel carries a sentence that contains none
-of it.
+device — the drug, the dose, the prescriber — pulled with the asker's own token
+from `/inbox`, a companion surface, not the Alexa+ card itself (that card renders
+a masked receipt and nothing more; see the README). The spoken channel carries a
+sentence that contains none of it.
 
 The room learns that something was sent. It does not learn what.
 
@@ -178,7 +179,7 @@ security claim you cannot check is worth less than a smaller one you can.
 And an attack suite whose entire job is to get a protected value spoken aloud,
 where a failure is a finding rather than a broken test — reported by the test
 runner as an open finding rather than quietly excluded from a headline number.
-307 checks pass; 38 findings are tracked beside them, 25 now closed and 13 still failing and named in the runner's own output.
+322 checks pass; 38 tracked assertions across 16 named findings, 25 now closed and 13 still failing and named in the runner's own output (four reasons, explained in the README: they require the bug to succeed, they contradict a passing test, one is a hard `assert.ok(false)`, and two describe accepted narrower gaps we chose to state rather than fix).
 
 ## What we learned
 

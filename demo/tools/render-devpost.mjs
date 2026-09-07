@@ -35,7 +35,7 @@ const STILLS = [
   { beat: 2, n: 2,
     cap: 'A prompt injection in the tool call orders it to speak the drug name. The spoken line comes back byte-identical.' },
   { beat: 5, n: 3, device: true,
-    cap: 'The same answer in full, on the asker’s own device, over the MCP Apps card.' },
+    cap: 'The same answer in full, on the asker’s own device, from /inbox with her own token — not the MCP Apps card, which stays blank.' },
   { beat: 9, n: 4, raw: true,
     cap: 'Every word the room heard, searchable. “Furosemide”: no match, in 1,045 characters.' },
   { beat: 9, n: 5,
